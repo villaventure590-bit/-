@@ -70,7 +70,7 @@ function listenToMicrophone() {
 
     const recognition = new SpeechRecognition();
 
-    recognition.lang = "ar-SA";
+  recognition.lang = "ur-PK";
     recognition.continuous = true;
     recognition.interimResults = true;
 
