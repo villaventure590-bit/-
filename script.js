@@ -255,4 +255,34 @@ window.trackPrayerStage = function (stage) {
     console.log("Prayer sequence:", stageName);
 };
 
+// =====================================
+// 8. ISHA 4 FARZ TEST
+// =====================================
+
+let ishaRakat = 0;
+
+window.resetIshaTest = function () {
+    ishaRakat = 0;
+
+    rakatNumber.textContent = "0";
+    statusText.textContent = "Isha test reset.";
+};
+
+window.completeIshaRakat = function () {
+    if (ishaRakat >= 4) {
+        statusText.textContent = "Isha ki 4 rak'at complete.";
+        return;
+    }
+
+    ishaRakat++;
+
+    rakatNumber.textContent = ishaRakat;
+    statusText.textContent =
+        "Isha test: Rak'at " + ishaRakat;
+
+    if ("vibrate" in navigator) {
+        navigator.vibrate(200);
+    }
+};
+
 
