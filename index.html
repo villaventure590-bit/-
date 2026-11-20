@@ -29,13 +29,38 @@
                 micStatus.textContent = "Error: " + error.message;
                 console.error(error);
             }
-        };
+      window.testWhisperMic = async function () {
+    const micStatus = document.getElementById("micStatus");
+
+    try {
+        if (!window.whisperTranscriber) {
+            micStatus.textContent = "Pehle AI model load karein.";
+            return;
+        }
+
+        micStatus.textContent = "Microphone permission mang raha hai...";
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true
+        });
+
+        micStatus.textContent = "Microphone working! 🎤";
+
+        stream.getTracks().forEach(track => track.stop());
+
+    } catch (error) {
+        micStatus.textContent = "Microphone error: " + error.message;
+    }
+};  
     </script>
 </head>
 
 <body>
 <button onclick="loadWhisperModel()">
     AI Model Load Karein
+</button>
+    <button onclick="testWhisperMic()">
+    🎤 Whisper Microphone Test
 </button>
     <main class="container">
         <h1>عِش اللحظة</h1>
