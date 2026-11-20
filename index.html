@@ -1,7 +1,6 @@
 
 <!DOCTYPE html>
 <html lang="ur" dir="rtl">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -69,7 +68,6 @@
                 });
 
                 micStatus.textContent = "Listening started...";
-
                 let stopped = false;
 
                 window.stopWhisperListening = function () {
@@ -114,9 +112,7 @@
                             URL.revokeObjectURL(audioUrl);
                         }
 
-                        if (!stopped) {
-                            listenPart();
-                        }
+                        if (!stopped) listenPart();
                     };
 
                     recorder.start();
@@ -141,74 +137,126 @@
 
 <body>
 
-    <button onclick="loadWhisperModel()">
-        AI Model Load Karein
-    </button>
+<div class="app-shell">
 
-    <button onclick="testWhisperMic()">
-        🎤 Whisper Microphone Test
-    </button>
+    <header class="top-header">
+        <div class="brand-mark">ع</div>
+        <div class="brand-text">
+            <h1>عِش اللحظة</h1>
+            <p>نماز کے ساتھ جڑے رہیے</p>
+        </div>
+    </header>
 
-    <button onclick="startWhisperListening()">
-        🎙️ Voice Recognition Test
-    </button>
+    <!-- Digital Clock -->
+    <section class="clock-card">
+        <p class="clock-label">آپ کا موجودہ وقت</p>
+        <div id="digitalClock">00:00:00</div>
+        <div id="clockDate">Loading date...</div>
+        <div class="clock-decoration">✦ &nbsp; ✧ &nbsp; ✦</div>
+    </section>
 
-    <button onclick="
-        if (window.stopWhisperListening) {
-            window.stopWhisperListening();
-        }
-    ">
-        Stop Listening
-    </button>
+    <!-- Prayer Counter -->
+    <main class="prayer-card">
+        <div class="section-heading">
+            <span class="heading-line"></span>
+            <span>نماز کی رہنمائی</span>
+            <span class="heading-line"></span>
+        </div>
 
-    <main class="container">
-        <h1>عِش اللحظة</h1>
-        <p class="subtitle">نماز کے ساتھ جڑے رہیے</p>
+        <h2>عشاء کی نماز</h2>
+        <p class="rakat-label">موجودہ رکعت</p>
 
-        <section class="prayer-card">
-            <h2>عشاء کی نماز</h2>
+        <div id="rakatNumber" class="rakat-number">1</div>
 
-            <p>موجودہ رکعت</p>
-            <div id="rakatNumber">1</div>
-
-            <p id="status">تجربہ شروع کرنے کے لیے تیار</p>
-
-            <div class="buttons">
-                <button onclick="testRakat(1)">پہلی رکعت</button>
-                <button onclick="testRakat(2)">دوسری رکعت</button>
-                <button onclick="testRakat(3)">تیسری رکعت</button>
-                <button onclick="testRakat(4)">چوتھی رکعت</button>
-                <button class="salam" onclick="testSalam()">سلام</button>
-            </div>
-        </section>
-
-        <p class="note">
-            یہ صرف وائبریشن کا تجربہ ہے۔ رکعت خودکار طور پر معلوم نہیں ہوتی۔
+        <p id="status" class="status-text">
+            تجربہ شروع کرنے کے لیے تیار
         </p>
+
+        <div class="buttons">
+            <button onclick="testRakat(1)">پہلی رکعت</button>
+            <button onclick="testRakat(2)">دوسری رکعت</button>
+            <button onclick="testRakat(3)">تیسری رکعت</button>
+            <button onclick="testRakat(4)">چوتھی رکعت</button>
+            <button class="salam" onclick="testSalam()">سلام</button>
+        </div>
     </main>
 
-    <div class="mic-test">
-        <h2>مائیک ٹیسٹ</h2>
+    <!-- Stage Display -->
+    <section class="stage-card" id="prayerStage">
+        <div class="stage-icon">☾</div>
+        <h2>Namaz Stage</h2>
+        <p id="stageStatus">Abhi namaz ka stage maloom nahi.</p>
+        <div class="stage-divider"></div>
+        <p id="rakatStatus">Rak‘at: Abhi maloom nahi</p>
+    </section>
 
-        <button id="micButton" onclick="listenToMicrophone()">
-            🎤 مائیک ٹیسٹ شروع کریں
+    <!-- AI / Microphone -->
+    <section class="mic-card">
+        <div class="section-heading">
+            <span class="heading-line"></span>
+            <span>AI Voice Assistant</span>
+            <span class="heading-line"></span>
+        </div>
+
+        <button class="action-button gold-button" onclick="loadWhisperModel()">
+            AI Model Load Karein
         </button>
 
-        <p id="micStatus">مائیک ابھی بند ہے</p>
+        <button class="action-button" onclick="testWhisperMic()">
+            🎤 Microphone Test
+        </button>
 
-        <!-- New Namaz Stage Section -->
-        <div id="prayerStage">
-            <h3>Namaz Stage</h3>
-            <p id="stageStatus">
-                Abhi namaz ka stage maloom nahi.
-            </p>
-            <p id="rakatStatus">
-                Rak‘at: Abhi maloom nahi
-            </p>
+        <button class="action-button listen-button" onclick="startWhisperListening()">
+            🎙️ Start Listening
+        </button>
+
+        <button class="action-button stop-button" onclick="
+            if (window.stopWhisperListening) {
+                window.stopWhisperListening();
+            }
+        ">
+            Stop Listening
+        </button>
+
+        <div class="mic-status-box">
+            <span class="status-dot"></span>
+            <p id="micStatus">مائیک ابھی بند ہے</p>
         </div>
-    </div>
+    </section>
 
-    <script src="script.js"></script>
+    <footer>
+        <p>عِش اللحظة</p>
+        <span>نماز میں سکون، دل میں حضور</span>
+    </footer>
+
+</div>
+
+<!-- Digital clock updater -->
+<script>
+    function updateDigitalClock() {
+        const now = new Date();
+
+        document.getElementById("digitalClock").textContent =
+            now.toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false
+            });
+
+        document.getElementById("clockDate").textContent =
+            now.toLocaleDateString("en-GB", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+            });
+    }
+
+    updateDigitalClock();
+    setInterval(updateDigitalClock, 1000);
+</script>
+
+<script src="script.js"></script>
 </body>
-
 </html>
