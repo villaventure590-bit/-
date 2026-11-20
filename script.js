@@ -73,7 +73,7 @@ if (stageBox) {
         button.textContent = stage;
 
         button.addEventListener("click", () => {
-            window.testPrayerStage(index);
+           window.trackPrayerStage(index);
         });
 
         stageTestPanel.appendChild(button);
@@ -214,4 +214,45 @@ window.resetRakatCount = function () {
         messageDisplay.textContent = "Rak'at count reset ho gaya.";
     }
 };
+
+
+// =====================================
+// 7. PRAYER STAGE SEQUENCE TRACKER
+// =====================================
+
+const prayerSequence = [
+    "Qiyam",
+    "Ruku",
+    "Sajdah",
+    "Qa'dah"
+];
+
+let sequenceIndex = -1;
+
+window.trackPrayerStage = function (stage) {
+    const stageName = prayerSequence[stage];
+
+    if (!stageName) return;
+
+    // Qiyam starts a new test sequence
+    if (stageName === "Qiyam") {
+        sequenceIndex = 0;
+    } else {
+        if (sequenceIndex === -1) {
+            stageStatus.textContent =
+                "Pehle Qiyam select karein.";
+            return;
+        }
+
+        sequenceIndex = stage;
+    }
+
+    if (stageStatus) {
+        stageStatus.textContent =
+            "Current stage: " + stageName;
+    }
+
+    console.log("Prayer sequence:", stageName);
+};
+
 
