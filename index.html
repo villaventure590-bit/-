@@ -1,12 +1,38 @@
 
 <!DOCTYPE html>
 <html lang="ur" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>عِش اللحظة</title>
     <link rel="stylesheet" href="style.css">
+
+    <script type="module">
+        import { pipeline } from
+        "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+
+        window.loadWhisperModel = async function () {
+            const micStatus = document.getElementById("micStatus");
+
+            try {
+                micStatus.textContent = "AI model loading...";
+
+                window.whisperTranscriber = await pipeline(
+                    "automatic-speech-recognition",
+                    "Xenova/whisper-tiny",
+                    { dtype: "q8" }
+                );
+
+                micStatus.textContent = "AI model loaded!";
+            } catch (error) {
+                micStatus.textContent = "Error: " + error.message;
+                console.error(error);
+            }
+        };
+    </script>
 </head>
+
 <body>
 
     <main class="container">
