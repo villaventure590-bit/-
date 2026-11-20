@@ -10,7 +10,7 @@
 
     <script type="module">
         import { pipeline } from
-        "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+            "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
 
         window.loadWhisperModel = async function () {
             const micStatus = document.getElementById("micStatus");
@@ -29,103 +29,121 @@
                 micStatus.textContent = "Error: " + error.message;
                 console.error(error);
             }
-      window.testWhisperMic = async function () {
-    const micStatus = document.getElementById("micStatus");
-
-    try {
-        if (!window.whisperTranscriber) {
-            micStatus.textContent = "Pehle AI model load karein.";
-            return;
-        }
-
-        micStatus.textContent = "Microphone permission mang raha hai...";
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true
-        });
-
-        micStatus.textContent = "Microphone working! 🎤";
-
-        stream.getTracks().forEach(track => track.stop());
-
-    } catch (error) {
-        micStatus.textContent = "Microphone error: " + error.message;
-    }
-window.startWhisperListening = async function () {
-    const micStatus = document.getElementById("micStatus");
-
-    try {
-        if (!window.whisperTranscriber) {
-            micStatus.textContent = "Pehle AI model load karein.";
-            return;
-        }
-
-        micStatus.textContent = "Microphone permission mang raha hai...";
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true
-        });
-
-        const recorder = new MediaRecorder(stream);
-        const chunks = [];
-
-        recorder.ondataavailable = event => {
-            if (event.data.size > 0) {
-                chunks.push(event.data);
-            }
         };
 
-        recorder.onstop = async function () {
-            try {
-                micStatus.textContent = "Awaaz process ho rahi hai...";
+        window.testWhisperMic = async function () {
+            const micStatus = document.getElementById("micStatus");
 
-                const audioBlob = new Blob(chunks, {
-                    type: recorder.mimeType
+            try {
+                if (!window.whisperTranscriber) {
+                    micStatus.textContent = "Pehle AI model load karein.";
+                    return;
+                }
+
+                micStatus.textContent = "Microphone permission mang raha hai...";
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true
                 });
 
-                const audioUrl = URL.createObjectURL(audioBlob);
+                micStatus.textContent = "Microphone working! 🎤";
 
-                const result = await window.whisperTranscriber(audioUrl);
+                stream.getTracks().forEach(track => track.stop());
 
-                micStatus.textContent = "Pehchane gaye alfaaz: " + result.text;
-                console.log("Whisper ne ye alfaaz pehchane:", result.text);
-
-                URL.revokeObjectURL(audioUrl);
             } catch (error) {
-                micStatus.textContent = "Recognition error: " + error.message;
+                micStatus.textContent = "Microphone error: " + error.message;
+                console.error(error);
             }
-
-            stream.getTracks().forEach(track => track.stop());
         };
 
-        recorder.start();
+        window.startWhisperListening = async function () {
+            const micStatus = document.getElementById("micStatus");
 
-        micStatus.textContent = "Ab 5 seconds tak boliye...";
+            try {
+                if (!window.whisperTranscriber) {
+                    micStatus.textContent = "Pehle AI model load karein.";
+                    return;
+                }
 
-        setTimeout(() => {
-            if (recorder.state === "recording") {
-                recorder.stop();
+                micStatus.textContent = "Microphone permission mang raha hai...";
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true
+                });
+
+                const recorder = new MediaRecorder(stream);
+                const chunks = [];
+
+                recorder.ondataavailable = event => {
+                    if (event.data.size > 0) {
+                        chunks.push(event.data);
+                    }
+                };
+
+                recorder.onstop = async function () {
+                    try {
+                        micStatus.textContent = "Awaaz process ho rahi hai...";
+
+                        const audioBlob = new Blob(chunks, {
+                            type: recorder.mimeType
+                        });
+
+                        const audioUrl = URL.createObjectURL(audioBlob);
+
+                        const result = await window.whisperTranscriber(audioUrl);
+
+                        micStatus.textContent =
+                            "Pehchane gaye alfaaz: " + result.text;
+
+                        console.log(
+                            "Whisper ne ye alfaaz pehchane:",
+                            result.text
+                        );
+
+                        URL.revokeObjectURL(audioUrl);
+
+                    } catch (error) {
+                        micStatus.textContent =
+                            "Recognition error: " + error.message;
+                        console.error(error);
+                    }
+
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                recorder.start();
+
+                micStatus.textContent = "Ab 5 seconds tak boliye...";
+
+                setTimeout(() => {
+                    if (recorder.state === "recording") {
+                        recorder.stop();
+                    }
+                }, 5000);
+
+            } catch (error) {
+                micStatus.textContent =
+                    "Microphone error: " + error.message;
+                console.error(error);
             }
-        }, 5000);
-
-    } catch (error) {
-        micStatus.textContent = "Microphone error: " + error.message;
-    }
-};
-      
+        };
     </script>
 </head>
 
 <body>
-<button onclick="loadWhisperModel()">
-    AI Model Load Karein
-</button>
+
+    <button onclick="loadWhisperModel()">
+        AI Model Load Karein
+    </button>
+
     <button onclick="testWhisperMic()">
-    🎤 Whisper Microphone Test
-</button>
+        🎤 Whisper Microphone Test
+    </button>
+
     <button onclick="startWhisperListening()">
-    🎙️ Voice Recognition Test
-</button>
+        🎙️ Voice Recognition Test
+    </button>
+
     <main class="container">
         <h1>عِش اللحظة</h1>
         <p class="subtitle">نماز کے ساتھ جڑے رہیے</p>
@@ -152,17 +170,17 @@ window.startWhisperListening = async function () {
         </p>
     </main>
 
-    <!-- new code for vice -->
+    <div class="mic-test">
+        <h2>مائیک ٹیسٹ</h2>
 
-<div class="mic-test">
-    <h2>مائیک ٹیسٹ</h2>
-   <button id="micButton" onclick="listenToMicrophone()">
-        🎤 مائیک ٹیسٹ شروع کریں
-    </button>
-    <p id="micStatus">مائیک ابھی بند ہے</p>
-</div>
+        <button id="micButton" onclick="listenToMicrophone()">
+            🎤 مائیک ٹیسٹ شروع کریں
+        </button>
 
+        <p id="micStatus">مائیک ابھی بند ہے</p>
+    </div>
 
     <script src="script.js"></script>
 </body>
+
 </html>
