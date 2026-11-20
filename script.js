@@ -69,8 +69,7 @@ function listenToMicrophone() {
     }
 
     const recognition = new SpeechRecognition();
-
-recognition.lang = "ps-AF";
+recognition.lang = "ar-SA";
     recognition.continuous = true;
     recognition.interimResults = true;
 
