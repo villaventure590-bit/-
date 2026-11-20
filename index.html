@@ -185,8 +185,11 @@
 
                         try {
 
-                            const result =
-                                await window.whisperTranscriber(audioUrl);
+                           const result =
+    await window.whisperTranscriber(audioUrl, {
+        language: "arabic",
+        task: "transcribe"
+    });
 
                             if (stopped) return;
 
