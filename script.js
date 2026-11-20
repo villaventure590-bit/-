@@ -78,19 +78,29 @@ function listenToMicrophone() {
         micStatus.textContent = "عربی آواز سن رہا ہے...";
     };
 
-    recognition.onresult = function (event) {
-        let text = "";
+ 
+recognition.onresult = function (event) {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            text += event.results[i][0].transcript;
-        }
+        if (!event.results[i].isFinal) continue;
 
-        micStatus.textContent = "سنی گئی آواز: " + text;
+        let text = event.results[i][0].transcript;
 
-        if (text.includes("الله أكبر")) {
+        // Arabic ke mukhtalif likhne ke tareeqon ko normalize karein
+        text = text
+            .replace(/[\u064B-\u065F\u0670]/g, "")
+            .replace(/ـ/g, "")
+            .replace(/[أإآٱ]/g, "ا")
+            .replace(/ى/g, "ي")
+            .replace(/ک/g, "ك")
+            .trim();
+
+        if (/الله\s*اكبر/.test(text)) {
             micStatus.textContent = "الله أكبر پہچان لیا گیا!";
         }
-    };
+    }
+};
+
 
     recognition.onerror = function (event) {
         micStatus.textContent = "Recognition error: " + event.error;
