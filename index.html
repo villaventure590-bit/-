@@ -88,6 +88,7 @@ window.startWhisperListening = async function () {
                 const result = await window.whisperTranscriber(audioUrl);
 
                 micStatus.textContent = "Pehchane gaye alfaaz: " + result.text;
+                console.log("Whisper ne ye alfaaz pehchane:", result.text);
 
                 URL.revokeObjectURL(audioUrl);
             } catch (error) {
