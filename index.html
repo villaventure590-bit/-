@@ -186,6 +186,35 @@
 
 
                 // =====================================
+                // AUTOMATIC TAKBEER DETECTION HANDLER
+                // =====================================
+
+                window.handleTakbeerDetection = function (text) {
+
+                    if (!recognizedText || !micStatus) return;
+
+                    if (isTakbeer(text)) {
+
+                        recognizedText.textContent = "اللہ اکبر";
+
+                        micStatus.textContent =
+                            "Takbeer recognized.";
+
+                        console.log("Takbeer detected!");
+
+                    } else {
+
+                        recognizedText.textContent =
+                            "کوئی مستند تکبیر نہیں ملی";
+
+                        micStatus.textContent =
+                            "Listening for Takbeer...";
+
+                    }
+                };
+
+
+                // =====================================
                 // RECORD AUDIO IN 5 SECOND PARTS
                 // =====================================
 
@@ -246,23 +275,7 @@
                                     spokenText
                                 );
 
-                                if (isTakbeer(spokenText)) {
-
-                                    recognizedText.textContent =
-                                        "اللہ اکبر";
-
-                                    micStatus.textContent =
-                                        "Takbeer recognized.";
-
-                                } else {
-
-                                    recognizedText.textContent =
-                                        "کوئی مستند تکبیر نہیں ملی";
-
-                                    micStatus.textContent =
-                                        "Listening for Takbeer...";
-
-                                }
+                                window.handleTakbeerDetection(spokenText);
 
                             } catch (error) {
 
