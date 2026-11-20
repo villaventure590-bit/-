@@ -55,37 +55,48 @@ async function startMicTest() {
     }
 }
 
-async function listenToMicrophone() {
+
+function listenToMicrophone() {
     const micStatus = document.getElementById("micStatus");
 
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true
-        });
+    const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        const audioContext = new AudioContext();
-        const microphone = audioContext.createMediaStreamSource(stream);
-        const analyser = audioContext.createAnalyser();
+    if (!SpeechRecognition) {
+        micStatus.textContent =
+            "Aapka browser speech recognition support nahi karta.";
+        return;
+    }
 
-        microphone.connect(analyser);
+    const recognition = new SpeechRecognition();
 
-        const data = new Uint8Array(analyser.frequencyBinCount);
+    recognition.lang = "ar-SA";
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
-        function checkSound() {
-            analyser.getByteFrequencyData(data);
+    recognition.onstart = function () {
+        micStatus.textContent = "عربی آواز سن رہا ہے...";
+    };
 
-            const volume = data.reduce((a, b) => a + b, 0) / data.length;
+    recognition.onresult = function (event) {
+        let text = "";
 
-            micStatus.textContent =
-                "Microphone active — Sound level: " + Math.round(volume);
-
-            requestAnimationFrame(checkSound);
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            text += event.results[i][0].transcript;
         }
 
-        checkSound();
+        micStatus.textContent = "سنی گئی آواز: " + text;
 
-    } catch (error) {
-        micStatus.textContent = "Microphone error: " + error.message;
-    }
+        if (text.includes("الله أكبر")) {
+            micStatus.textContent = "الله أكبر پہچان لیا گیا!";
+        }
+    };
+
+    recognition.onerror = function (event) {
+        micStatus.textContent = "Recognition error: " + event.error;
+    };
+
+    recognition.start();
 }
+
 
