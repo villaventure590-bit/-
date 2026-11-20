@@ -1,20 +1,31 @@
 
 <!DOCTYPE html>
 <html lang="ur" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>عِش اللحظة</title>
+
     <link rel="stylesheet" href="style.css">
 
     <script type="module">
+
         import { pipeline } from
             "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
 
+        // =====================================
+        // 1. LOAD AI MODEL
+        // =====================================
+
         window.loadWhisperModel = async function () {
-            const micStatus = document.getElementById("micStatus");
+
+            const micStatus =
+                document.getElementById("micStatus");
 
             try {
+
                 micStatus.textContent = "AI model loading...";
 
                 window.whisperTranscriber = await pipeline(
@@ -24,261 +35,515 @@
                 );
 
                 micStatus.textContent = "AI model loaded!";
+
             } catch (error) {
-                micStatus.textContent = "Error: " + error.message;
+
+                micStatus.textContent =
+                    "Error: " + error.message;
+
                 console.error(error);
             }
         };
 
+
+        // =====================================
+        // 2. TEST MICROPHONE
+        // =====================================
+
         window.testWhisperMic = async function () {
-            const micStatus = document.getElementById("micStatus");
+
+            const micStatus =
+                document.getElementById("micStatus");
 
             try {
+
                 if (!window.whisperTranscriber) {
-                    micStatus.textContent = "Pehle AI model load karein.";
+
+                    micStatus.textContent =
+                        "Pehle AI model load karein.";
+
                     return;
                 }
 
-                micStatus.textContent = "Microphone permission mang raha hai...";
+                micStatus.textContent =
+                    "Microphone permission mang raha hai...";
 
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: true
-                });
+                const stream =
+                    await navigator.mediaDevices.getUserMedia({
+                        audio: true
+                    });
 
-                micStatus.textContent = "Microphone working! 🎤";
+                micStatus.textContent =
+                    "Microphone working! 🎤";
+
                 stream.getTracks().forEach(track => track.stop());
 
             } catch (error) {
-                micStatus.textContent = "Microphone error: " + error.message;
+
+                micStatus.textContent =
+                    "Microphone error: " + error.message;
+
                 console.error(error);
             }
         };
 
+
+        // =====================================
+        // 3. START WHISPER LISTENING
+        // =====================================
+
         window.startWhisperListening = async function () {
-            const micStatus = document.getElementById("micStatus");
+
+            const micStatus =
+                document.getElementById("micStatus");
+
+            const recognizedText =
+                document.getElementById("recognizedText");
 
             try {
+
                 if (!window.whisperTranscriber) {
-                    micStatus.textContent = "Pehle AI model load karein.";
+
+                    micStatus.textContent =
+                        "Pehle AI model load karein.";
+
                     return;
                 }
 
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: true
-                });
+                const stream =
+                    await navigator.mediaDevices.getUserMedia({
+                        audio: true
+                    });
 
-                micStatus.textContent = "Listening started...";
+                micStatus.textContent =
+                    "Listening started...";
+
+                recognizedText.textContent =
+                    "Listening for voice...";
+
                 let stopped = false;
 
+                let activeRecorder = null;
+                let nextTimer = null;
+
                 window.stopWhisperListening = function () {
+
                     stopped = true;
+
+                    if (nextTimer) {
+                        clearTimeout(nextTimer);
+                    }
+
+                    if (
+                        activeRecorder &&
+                        activeRecorder.state === "recording"
+                    ) {
+                        activeRecorder.stop();
+                    }
+
                     stream.getTracks().forEach(track => track.stop());
-                    micStatus.textContent = "Listening stopped.";
+
+                    micStatus.textContent =
+                        "Listening stopped.";
                 };
 
+
+                // =====================================
+                // RECORD AUDIO IN 5 SECOND PARTS
+                // =====================================
+
                 async function listenPart() {
+
                     if (stopped) return;
 
-                    const recorder = new MediaRecorder(stream);
+                    const recorder =
+                        new MediaRecorder(stream);
+
+                    activeRecorder = recorder;
+
                     const chunks = [];
 
                     recorder.ondataavailable = event => {
+
                         if (event.data.size > 0) {
                             chunks.push(event.data);
                         }
                     };
 
+
                     recorder.onstop = async function () {
+
                         if (stopped) return;
 
-                        const audioUrl = URL.createObjectURL(
-                            new Blob(chunks, { type: recorder.mimeType })
+                        const audioBlob = new Blob(
+                            chunks,
+                            { type: recorder.mimeType }
                         );
 
+                        const audioUrl =
+                            URL.createObjectURL(audioBlob);
+
                         try {
+
                             const result =
                                 await window.whisperTranscriber(audioUrl);
 
-                            micStatus.textContent =
-                                "Pehchane gaye alfaaz: " + result.text;
+                            if (stopped) return;
+
+                            const text =
+                                (result.text || "").trim();
+
+                            if (text) {
+
+                                recognizedText.textContent = text;
+
+                                micStatus.textContent =
+                                    "Voice recognized successfully.";
+
+                            } else {
+
+                                micStatus.textContent =
+                                    "Listening for more voice...";
+                            }
 
                             console.log("Whisper:", result.text);
 
                         } catch (error) {
+
                             console.error(error);
+
                             micStatus.textContent =
                                 "Recognition error: " + error.message;
+
                         } finally {
+
                             URL.revokeObjectURL(audioUrl);
                         }
 
-                        if (!stopped) listenPart();
+                        if (!stopped) {
+                            listenPart();
+                        }
                     };
+
 
                     recorder.start();
 
-                    setTimeout(() => {
+                    nextTimer = setTimeout(() => {
+
                         if (recorder.state === "recording") {
                             recorder.stop();
                         }
+
                     }, 5000);
                 }
 
                 listenPart();
 
             } catch (error) {
+
                 micStatus.textContent =
                     "Microphone error: " + error.message;
+
                 console.error(error);
             }
         };
+
     </script>
+
 </head>
+
 
 <body>
 
 <div class="app-shell">
 
+    <!-- HEADER -->
+
     <header class="top-header">
+
         <div class="brand-mark">ع</div>
+
         <div class="brand-text">
+
             <h1>عِش اللحظة</h1>
+
             <p>نماز کے ساتھ جڑے رہیے</p>
+
         </div>
+
     </header>
 
-    <!-- Digital Clock -->
+
+    <!-- DIGITAL CLOCK -->
+
     <section class="clock-card">
-        <p class="clock-label">آپ کا موجودہ وقت</p>
+
+        <p class="clock-label">
+            آپ کا موجودہ وقت
+        </p>
+
         <div id="digitalClock">00:00:00</div>
+
         <div id="clockDate">Loading date...</div>
-        <div class="clock-decoration">✦ &nbsp; ✧ &nbsp; ✦</div>
+
+        <div class="clock-decoration">
+            ✦ &nbsp; ✧ &nbsp; ✦
+        </div>
+
     </section>
 
-    <!-- Prayer Counter -->
+
+    <!-- PRAYER COUNTER -->
+
     <main class="prayer-card">
+
         <div class="section-heading">
+
             <span class="heading-line"></span>
+
             <span>نماز کی رہنمائی</span>
+
             <span class="heading-line"></span>
+
         </div>
 
         <h2>عشاء کی نماز</h2>
-        <p class="rakat-label">موجودہ رکعت</p>
 
-        <div id="rakatNumber" class="rakat-number">1</div>
+        <p class="rakat-label">
+            موجودہ رکعت
+        </p>
+
+        <div id="rakatNumber" class="rakat-number">
+            1
+        </div>
 
         <p id="status" class="status-text">
             تجربہ شروع کرنے کے لیے تیار
         </p>
 
+
+        <!-- MANUAL RAKAT BUTTONS -->
+
         <div class="buttons">
-            <button onclick="testRakat(1)">پہلی رکعت</button>
-            <button onclick="testRakat(2)">دوسری رکعت</button>
-            <button onclick="testRakat(3)">تیسری رکعت</button>
-            <button onclick="testRakat(4)">چوتھی رکعت</button>
-            <button class="salam" onclick="testSalam()">سلام</button>
+
+            <button onclick="testRakat(1)">
+                پہلی رکعت
+            </button>
+
+            <button onclick="testRakat(2)">
+                دوسری رکعت
+            </button>
+
+            <button onclick="testRakat(3)">
+                تیسری رکعت
+            </button>
+
+            <button onclick="testRakat(4)">
+                چوتھی رکعت
+            </button>
+
+            <button class="salam" onclick="testSalam()">
+                سلام
+            </button>
+
         </div>
-        
-<div class="buttons">
-    <button onclick="completeRakatTest()">
-        Complete Rak‘at
-    </button>
 
-    <button onclick="resetRakatCount()">
-        Reset Count
-    </button>
-</div>
 
-<div class="buttons">
-    <button onclick="completeIshaRakat()">
-        Complete Isha Rak‘at
-    </button>
+        <!-- RAKAT COUNTER TEST -->
 
-    <button onclick="resetIshaTest()">
-        Reset Isha Test
-    </button>
-</div>
+        <div class="buttons">
+
+            <button onclick="completeRakatTest()">
+                Complete Rak‘at
+            </button>
+
+            <button onclick="resetRakatCount()">
+                Reset Count
+            </button>
+
+        </div>
+
+
+        <!-- ISHA TEST -->
+
+        <div class="buttons">
+
+            <button onclick="completeIshaRakat()">
+                Complete Isha Rak‘at
+            </button>
+
+            <button onclick="resetIshaTest()">
+                Reset Isha Test
+            </button>
+
+        </div>
 
     </main>
 
-    <!-- Stage Display -->
+
+    <!-- PRAYER STAGE -->
+
     <section class="stage-card" id="prayerStage">
+
         <div class="stage-icon">☾</div>
+
         <h2>Namaz Stage</h2>
-        <p id="stageStatus">Abhi namaz ka stage maloom nahi.</p>
+
+        <p id="stageStatus">
+            Abhi namaz ka stage maloom nahi.
+        </p>
+
         <div class="stage-divider"></div>
-        <p id="rakatStatus">Rak‘at: Abhi maloom nahi</p>
+
+        <p id="rakatStatus">
+            Rak‘at: Abhi maloom nahi
+        </p>
+
     </section>
 
-    <!-- AI / Microphone -->
+
+    <!-- AI VOICE ASSISTANT -->
+
     <section class="mic-card">
+
         <div class="section-heading">
+
             <span class="heading-line"></span>
+
             <span>AI Voice Assistant</span>
+
             <span class="heading-line"></span>
+
         </div>
 
-        <button class="action-button gold-button" onclick="loadWhisperModel()">
+
+        <button
+            class="action-button gold-button"
+            onclick="loadWhisperModel()">
+
             AI Model Load Karein
+
         </button>
 
-        <button class="action-button" onclick="testWhisperMic()">
+
+        <button
+            class="action-button"
+            onclick="testWhisperMic()">
+
             🎤 Microphone Test
+
         </button>
 
-        <button class="action-button listen-button" onclick="startWhisperListening()">
+
+        <button
+            class="action-button listen-button"
+            onclick="startWhisperListening()">
+
             🎙️ Start Listening
+
         </button>
 
-        <button class="action-button stop-button" onclick="
-            if (window.stopWhisperListening) {
-                window.stopWhisperListening();
-            }
-        ">
+
+        <button
+            class="action-button stop-button"
+            onclick="
+                if (window.stopWhisperListening) {
+                    window.stopWhisperListening();
+                }
+            ">
+
             Stop Listening
+
         </button>
+
+
+        <!-- MICROPHONE STATUS -->
 
         <div class="mic-status-box">
+
             <span class="status-dot"></span>
-            <p id="micStatus">مائیک ابھی بند ہے</p>
+
+            <p id="micStatus">
+                مائیک ابھی بند ہے
+            </p>
+
         </div>
+
+
+        <!-- RECOGNIZED VOICE TEXT -->
+
+        <div class="mic-status-box">
+
+            <h3>Recognized Voice Text</h3>
+
+            <p id="recognizedText">
+                Abhi koi voice text nahi mila.
+            </p>
+
+        </div>
+
     </section>
 
+
+    <!-- FOOTER -->
+
     <footer>
+
         <p>عِش اللحظة</p>
-        <span>نماز میں سکون، دل میں حضور</span>
+
+        <span>
+            نماز میں سکون، دل میں حضور
+        </span>
+
     </footer>
 
 </div>
 
-<!-- Digital clock updater -->
+
+<!-- DIGITAL CLOCK SCRIPT -->
+
 <script>
+
     function updateDigitalClock() {
+
         const now = new Date();
 
         document.getElementById("digitalClock").textContent =
+
             now.toLocaleTimeString("en-GB", {
+
                 hour: "2-digit",
                 minute: "2-digit",
                 second: "2-digit",
                 hour12: false
+
             });
 
+
         document.getElementById("clockDate").textContent =
+
             now.toLocaleDateString("en-GB", {
+
                 weekday: "long",
                 day: "numeric",
                 month: "long",
                 year: "numeric"
+
             });
-    };
-  
+
+    }
 
     updateDigitalClock();
+
     setInterval(updateDigitalClock, 1000);
+
 </script>
 
+
+<!-- YOUR EXISTING JAVASCRIPT -->
+
 <script src="script.js"></script>
+
 </body>
+
 </html>
