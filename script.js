@@ -1,17 +1,21 @@
 
+// =====================================
+// عِش اللحظة — Prayer Test System
+// =====================================
+
 const rakatNumber = document.getElementById("rakatNumber");
 const statusText = document.getElementById("status");
 
-// ہر رکعت کا الگ وائبریشن سگنل
-function testRakat(number) {
+// =====================================
+// 1. MANUAL RAKAT VIBRATION TEST
+// =====================================
 
+window.testRakat = function (number) {
     rakatNumber.textContent = number;
-
     statusText.textContent = "رکعت نمبر " + number + " کا سگنل";
 
     if ("vibrate" in navigator) {
-
-        let signals = {
+        const signals = {
             1: [200],
             2: [200, 150, 200],
             3: [200, 150, 200, 150, 200],
@@ -19,93 +23,166 @@ function testRakat(number) {
         };
 
         navigator.vibrate(signals[number]);
-
     } else {
-
         statusText.textContent =
             "آپ کا براؤزر وائبریشن سپورٹ نہیں کرتا۔";
     }
-}
+};
 
-// نماز مکمل ہونے کا الگ سگنل
-function testSalam() {
+// =====================================
+// 2. SALAM VIBRATION TEST
+// =====================================
 
+window.testSalam = function () {
     statusText.textContent = "نماز مکمل ہونے کا سگنل";
 
     if ("vibrate" in navigator) {
         navigator.vibrate([500, 250, 500]);
     }
-}
-// vice strat 
+};
 
-async function startMicTest() {
-    const micStatus = document.getElementById("micStatus");
+// =====================================
+// 3. PRAYER STAGE TEST PANEL
+// =====================================
 
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true
+const prayerStages = [
+    "Qiyam — قیام",
+    "Ruku — رکوع",
+    "Sajdah — سجدہ",
+    "Qa'dah — قعدہ",
+    "Salam — سلام"
+];
+
+const stageBox = document.getElementById("prayerStage");
+const stageStatus = document.getElementById("stageStatus");
+const stageRakatStatus = document.getElementById("rakatStatus");
+
+if (stageBox) {
+    const stageTestPanel = document.createElement("div");
+    stageTestPanel.className = "stage-test-panel";
+
+    const stageTitle = document.createElement("h3");
+    stageTitle.textContent = "Stage Test";
+
+    stageTestPanel.appendChild(stageTitle);
+
+    prayerStages.forEach((stage, index) => {
+        const button = document.createElement("button");
+
+        button.className = "stage-test-button";
+        button.textContent = stage;
+
+        button.addEventListener("click", () => {
+            window.testPrayerStage(index);
         });
 
-        micStatus.textContent = "مائیک کامیابی سے چل رہا ہے! 🎤";
+        stageTestPanel.appendChild(button);
+    });
 
-        stream.getTracks().forEach(track => track.stop());
-
-    } catch (error) {
-        micStatus.textContent = "مائیک کی اجازت نہیں ملی۔";
-    }
+    stageBox.appendChild(stageTestPanel);
 }
 
+window.testPrayerStage = function (index) {
+    const selectedStage = prayerStages[index];
 
-function listenToMicrophone() {
+    if (!selectedStage) return;
+
+    if (stageStatus) {
+        stageStatus.textContent = "Test stage: " + selectedStage;
+    }
+
+    if (stageRakatStatus) {
+        stageRakatStatus.textContent =
+            "Rak‘at count abhi automatic confirm nahi hota.";
+    }
+
+    console.log("Manual prayer stage test:", selectedStage);
+};
+
+// =====================================
+// 4. MICROPHONE SOUND-LEVEL TEST
+// =====================================
+
+let micStream = null;
+let micAudioContext = null;
+let micAnimationFrame = null;
+
+window.listenToMicrophone = async function () {
     const micStatus = document.getElementById("micStatus");
 
-    const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-        micStatus.textContent =
-            "Aapka browser speech recognition support nahi karta.";
+    // Agar mic already running ho to dobara start na karein
+    if (micStream) {
+        micStatus.textContent = "Microphone already active.";
         return;
     }
 
-    const recognition = new SpeechRecognition();
-recognition.lang = "ar-SA";
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+            audio: true
+        });
 
-    recognition.onstart = function () {
-        micStatus.textContent = "عربی آواز سن رہا ہے...";
-    };
+        micAudioContext = new AudioContext();
 
- 
-recognition.onresult = function (event) {
-    for (let i = event.resultIndex; i < event.results.length; i++) {
+        const microphone =
+            micAudioContext.createMediaStreamSource(micStream);
 
-        if (!event.results[i].isFinal) continue;
+        const analyser = micAudioContext.createAnalyser();
+        analyser.fftSize = 256;
 
-        let text = event.results[i][0].transcript;
+        microphone.connect(analyser);
 
-        // Arabic ke mukhtalif likhne ke tareeqon ko normalize karein
-        text = text
-            .replace(/[\u064B-\u065F\u0670]/g, "")
-            .replace(/ـ/g, "")
-            .replace(/[أإآٱ]/g, "ا")
-            .replace(/ى/g, "ي")
-            .replace(/ک/g, "ك")
-            .trim();
+        const data = new Uint8Array(analyser.frequencyBinCount);
 
-        if (/الله\s*اكبر/.test(text)) {
-            micStatus.textContent = "الله أكبر پہچان لیا گیا!";
+        micStatus.textContent = "Microphone active — Sound level: 0";
+
+        function checkSound() {
+            if (!micStream) return;
+
+            analyser.getByteFrequencyData(data);
+
+            const volume =
+                data.reduce((total, value) => total + value, 0)
+                / data.length;
+
+            micStatus.textContent =
+                "Microphone active — Sound level: " +
+                Math.round(volume);
+
+            micAnimationFrame = requestAnimationFrame(checkSound);
         }
+
+        checkSound();
+
+    } catch (error) {
+        micStatus.textContent = "Microphone error: " + error.message;
+        console.error(error);
+        window.stopMicrophoneTest();
     }
 };
 
+// =====================================
+// 5. STOP MICROPHONE SOUND-LEVEL TEST
+// =====================================
 
-    recognition.onerror = function (event) {
-        micStatus.textContent = "Recognition error: " + event.error;
-    };
+window.stopMicrophoneTest = function () {
+    const micStatus = document.getElementById("micStatus");
 
-    recognition.start();
-}
+    if (micAnimationFrame !== null) {
+        cancelAnimationFrame(micAnimationFrame);
+        micAnimationFrame = null;
+    }
 
+    if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+        micStream = null;
+    }
 
+    if (micAudioContext) {
+        micAudioContext.close();
+        micAudioContext = null;
+    }
+
+    if (micStatus) {
+        micStatus.textContent = "Microphone test stopped.";
+    }
+};
