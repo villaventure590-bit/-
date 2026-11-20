@@ -1,0 +1,51 @@
+
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عِش اللحظة</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <main class="container">
+        <h1>عِش اللحظة</h1>
+        <p class="subtitle">نماز کے ساتھ جڑے رہیے</p>
+
+        <section class="prayer-card">
+            <h2>عشاء کی نماز</h2>
+
+            <p>موجودہ رکعت</p>
+            <div id="rakatNumber">1</div>
+
+            <p id="status">تجربہ شروع کرنے کے لیے تیار</p>
+
+            <div class="buttons">
+                <button onclick="testRakat(1)">پہلی رکعت</button>
+                <button onclick="testRakat(2)">دوسری رکعت</button>
+                <button onclick="testRakat(3)">تیسری رکعت</button>
+                <button onclick="testRakat(4)">چوتھی رکعت</button>
+                <button class="salam" onclick="testSalam()">سلام</button>
+            </div>
+        </section>
+
+        <p class="note">
+            یہ صرف وائبریشن کا تجربہ ہے۔ رکعت خودکار طور پر معلوم نہیں ہوتی۔
+        </p>
+    </main>
+
+    <!-- new code for vice -->
+
+<div class="mic-test">
+    <h2>مائیک ٹیسٹ</h2>
+    <button id="micButton" onclick="startMicTest()">
+        🎤 مائیک ٹیسٹ شروع کریں
+    </button>
+    <p id="micStatus">مائیک ابھی بند ہے</p>
+</div>
+
+
+    <script src="script.js"></script>
+</body>
+</html>

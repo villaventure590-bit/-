@@ -1,0 +1,91 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #101c32;
+    color: white;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 430px;
+    text-align: center;
+}
+
+h1 {
+    color: #e6c477;
+    font-size: 38px;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: #d5d9e2;
+    margin-bottom: 30px;
+}
+
+.prayer-card {
+    background: #1c2c48;
+    border: 1px solid #b99a54;
+    border-radius: 20px;
+    padding: 30px 20px;
+}
+
+.prayer-card h2 {
+    color: #e6c477;
+    margin-bottom: 20px;
+}
+
+#rakatNumber {
+    font-size: 90px;
+    font-weight: bold;
+    color: #e6c477;
+    margin: 15px 0;
+}
+
+#status {
+    margin-bottom: 25px;
+    color: #d5d9e2;
+}
+
+.buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+button {
+    background: #d5b467;
+    color: #101c32;
+    border: none;
+    padding: 15px 10px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:active {
+    transform: scale(0.97);
+}
+
+button.salam {
+    background: #8fc6a5;
+    grid-column: 1 / -1;
+}
+
+.note {
+    margin-top: 25px;
+    color: #bfc8d8;
+    font-size: 13px;
+    line-height: 1.7;
+}
