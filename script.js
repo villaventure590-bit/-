@@ -54,3 +54,38 @@ async function startMicTest() {
         micStatus.textContent = "مائیک کی اجازت نہیں ملی۔";
     }
 }
+
+async function listenToMicrophone() {
+    const micStatus = document.getElementById("micStatus");
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true
+        });
+
+        const audioContext = new AudioContext();
+        const microphone = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+
+        microphone.connect(analyser);
+
+        const data = new Uint8Array(analyser.frequencyBinCount);
+
+        function checkSound() {
+            analyser.getByteFrequencyData(data);
+
+            const volume = data.reduce((a, b) => a + b, 0) / data.length;
+
+            micStatus.textContent =
+                "Microphone active — Sound level: " + Math.round(volume);
+
+            requestAnimationFrame(checkSound);
+        }
+
+        checkSound();
+
+    } catch (error) {
+        micStatus.textContent = "Microphone error: " + error.message;
+    }
+}
+
