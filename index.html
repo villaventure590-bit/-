@@ -10,259 +10,609 @@
 
     <link rel="stylesheet" href="style.css">
 
-    
-<script type="module">
+    <script type="module">
 
-import { pipeline } from
-    "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+        import { pipeline } from
+            "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
 
-// =====================================
-// 1. LOAD WHISPER AI MODEL
-// =====================================
+        // =====================================
+        // 1. LOAD AI MODEL
+        // =====================================
 
-window.loadWhisperModel = async function () {
+        window.loadWhisperModel = async function () {
 
-    const micStatus = document.getElementById("micStatus");
-
-    try {
-        micStatus.textContent = "AI model loading...";
-
-        window.whisperTranscriber = await pipeline(
-            "automatic-speech-recognition",
-            "Xenova/whisper-tiny",
-            { dtype: "q8" }
-        );
-
-        micStatus.textContent = "AI model loaded!";
-
-    } catch (error) {
-        micStatus.textContent = "Model error: " + error.message;
-        console.error(error);
-    }
-};
-
-
-// =====================================
-// 2. TEST MICROPHONE
-// =====================================
-
-window.testWhisperMic = async function () {
-
-    const micStatus = document.getElementById("micStatus");
-
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true
-        });
-
-        micStatus.textContent = "Microphone working!";
-
-        stream.getTracks().forEach(track => track.stop());
-
-    } catch (error) {
-        micStatus.textContent = "Microphone error: " + error.message;
-        console.error(error);
-    }
-};
-
-
-// =====================================
-// 3. START TAKBEER LISTENING
-// =====================================
-
-window.startWhisperListening = async function () {
-
-    const micStatus = document.getElementById("micStatus");
-    const recognizedText = document.getElementById("recognizedText");
-
-    if (!window.whisperTranscriber) {
-        micStatus.textContent = "Pehle AI model load karein.";
-        return;
-    }
-
-    if (window.whisperIsListening) {
-        micStatus.textContent = "Microphone already listening.";
-        return;
-    }
-
-    let stream;
-    let recorder = null;
-    let stopped = false;
-    let chunkTimer = null;
-
-    try {
-
-        stream = await navigator.mediaDevices.getUserMedia({
-            audio: true
-        });
-
-        window.whisperIsListening = true;
-
-        micStatus.textContent = "Microphone active — Listening...";
-        recognizedText.textContent = "اللہ اکبر ka intezar hai...";
-
-        window.stopWhisperListening = function () {
-
-            stopped = true;
-            window.whisperIsListening = false;
-
-            if (chunkTimer) {
-                clearTimeout(chunkTimer);
-            }
-
-            if (recorder && recorder.state === "recording") {
-                recorder.stop();
-            }
-
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-
-            micStatus.textContent = "Listening stopped.";
-        };
-
-
-        // RECORD AUDIO IN 8 SECOND PARTS
-
-        async function listenPart() {
-
-            if (stopped) return;
+            const micStatus =
+                document.getElementById("micStatus");
 
             try {
 
-                recorder = new MediaRecorder(stream);
+                micStatus.textContent = "AI model loading...";
 
-                const chunks = [];
+                window.whisperTranscriber = await pipeline(
+                    "automatic-speech-recognition",
+                    "Xenova/whisper-tiny",
+                    { dtype: "q8" }
+                );
 
-                recorder.ondataavailable = function (event) {
-
-                    if (event.data.size > 0) {
-                        chunks.push(event.data);
-                    }
-                };
-
-
-                recorder.onstop = async function () {
-
-                    if (chunkTimer) {
-                        clearTimeout(chunkTimer);
-                        chunkTimer = null;
-                    }
-
-                    if (stopped) return;
-
-                    micStatus.textContent = "Processing voice...";
-
-                    let audioUrl = null;
-
-                    try {
-
-                        const audioBlob = new Blob(chunks, {
-                            type: recorder.mimeType || "audio/webm"
-                        });
-
-                        audioUrl = URL.createObjectURL(audioBlob);
-
-                        const result = await window.whisperTranscriber(
-                            audioUrl,
-                            {
-                                language: "arabic",
-                                task: "transcribe"
-                            }
-                        );
-
-                        if (stopped) return;
-
-                        // CLEAN ARABIC TEXT
-
-                        const text = (result.text || "")
-                            .replace(/[ًٌٍَُِّْـ]/g, "")
-                            .replace(/[إأآٱ]/g, "ا")
-                            .replace(/[،.,!?؟]/g, " ")
-                            .replace(/\s+/g, " ")
-                            .trim();
-
-                        // ONLY ACCEPT ALLAHU AKBAR
-
-                        const takbeerPattern =
-                            /(^|\s)الله\s+اكبر(\s|$)/;
-
-                        if (takbeerPattern.test(text)) {
-
-                            recognizedText.textContent = "اللہ اکبر";
-                            micStatus.textContent = "Takbeer detected.";
-
-                        } else {
-
-                            recognizedText.textContent =
-                                "اللہ اکبر ka intezar hai...";
-
-                            micStatus.textContent =
-                                "Microphone active — Listening...";
-                        }
-
-                    } catch (error) {
-
-                        if (!stopped) {
-                            micStatus.textContent =
-                                "Recognition error: " + error.message;
-                        }
-
-                        console.error(error);
-
-                    } finally {
-
-                        if (audioUrl) {
-                            URL.revokeObjectURL(audioUrl);
-                        }
-                    }
-
-                    // START NEXT RECORDING
-
-                    if (!stopped) {
-                        listenPart();
-                    }
-                };
-
-
-                recorder.start();
-
-                micStatus.textContent = "Microphone active — Listening...";
-
-                chunkTimer = setTimeout(function () {
-
-                    if (recorder && recorder.state === "recording") {
-                        recorder.stop();
-                    }
-
-                }, 8000);
+                micStatus.textContent = "AI model loaded!";
 
             } catch (error) {
 
                 micStatus.textContent =
-                    "Recording error: " + error.message;
+                    "Error: " + error.message;
 
                 console.error(error);
-
-                window.stopWhisperListening();
             }
-        }
+        };
 
-        listenPart();
 
-    } catch (error) {
+        // =====================================
+        // 2. TEST MICROPHONE
+        // =====================================
 
-        window.whisperIsListening = false;
+        window.testWhisperMic = async function () {
 
-        micStatus.textContent =
-            "Microphone error: " + error.message;
+            const micStatus =
+                document.getElementById("micStatus");
 
-        console.error(error);
+            try {
+
+                if (!window.whisperTranscriber) {
+
+                    micStatus.textContent =
+                        "Pehle AI model load karein.";
+
+                    return;
+                }
+
+                micStatus.textContent =
+                    "Microphone permission mang raha hai...";
+
+                const stream =
+                    await navigator.mediaDevices.getUserMedia({
+                        audio: true
+                    });
+
+                micStatus.textContent =
+                    "Microphone working! 🎤";
+
+                stream.getTracks().forEach(track => track.stop());
+
+            } catch (error) {
+
+                micStatus.textContent =
+                    "Microphone error: " + error.message;
+
+                console.error(error);
+            }
+        };
+
+
+        // =====================================
+        // 3. STOP LISTENING
+        // =====================================
+
+        window.stopWhisperListening = null;
+
+
+        // =====================================
+        // 4. START WHISPER LISTENING
+        // =====================================
+
+        window.startWhisperListening = async function () {
+
+            const micStatus =
+                document.getElementById("micStatus");
+
+            const recognizedText =
+                document.getElementById("recognizedText");
+
+            try {
+
+                if (!window.whisperTranscriber) {
+
+                    micStatus.textContent =
+                        "Pehle AI model load karein.";
+
+                    return;
+                }
+
+                const stream =
+                    await navigator.mediaDevices.getUserMedia({
+                        audio: true
+                    });
+
+                micStatus.textContent =
+                    "Listening started...";
+
+                recognizedText.textContent =
+                    "Takbeer ka intezar hai...";
+
+                let stopped = false;
+                let activeRecorder = null;
+                let nextTimer = null;
+                let processing = false;
+
+                window.stopWhisperListening = function () {
+
+                    stopped = true;
+
+                    if (nextTimer) {
+                        clearTimeout(nextTimer);
+                    }
+
+                    if (
+                        activeRecorder &&
+                        activeRecorder.state === "recording"
+                    ) {
+                        activeRecorder.stop();
+                    }
+
+                    stream.getTracks().forEach(track => track.stop());
+
+                    micStatus.textContent =
+                        "Listening stopped.";
+
+                    window.stopWhisperListening = null;
+                };
+
+
+                // =====================================
+                // TAKBEER TEXT FILTER
+                // =====================================
+
+                function normalizeArabic(text) {
+
+                    return text
+                        .replace(/[ًٌٍَُِّْـٰ]/g, "")
+                        .replace(/[.,!?،؛؟]/g, "")
+                        .replace(/\s+/g, " ")
+                        .trim()
+                        .toLowerCase();
+                }
+
+
+                function isTakbeer(text) {
+
+                    const cleanText = normalizeArabic(text);
+
+                    const acceptedPhrases = [
+                        "الله أكبر",
+                        "الله اكبر"
+                    ];
+
+                    return acceptedPhrases.includes(cleanText);
+                }
+
+
+                // =====================================
+                // RECORD AUDIO IN 5 SECOND PARTS
+                // =====================================
+
+                async function listenPart() {
+
+                    if (stopped || processing) return;
+
+                    let recorder;
+
+                    try {
+
+                        recorder = new MediaRecorder(stream);
+
+                        activeRecorder = recorder;
+
+                        const chunks = [];
+
+                        recorder.ondataavailable = event => {
+
+                            if (event.data.size > 0) {
+                                chunks.push(event.data);
+                            }
+                        };
+
+
+                        recorder.onstop = async function () {
+
+                            if (stopped) return;
+
+                            processing = true;
+
+                            const audioBlob = new Blob(
+                                chunks,
+                                { type: recorder.mimeType }
+                            );
+
+                            const audioUrl =
+                                URL.createObjectURL(audioBlob);
+
+                            try {
+
+                                const result =
+                                    await window.whisperTranscriber(
+                                        audioUrl,
+                                        {
+                                            language: "arabic",
+                                            task: "transcribe"
+                                        }
+                                    );
+
+                                if (stopped) return;
+
+                                const spokenText =
+                                    (result.text || "").trim();
+
+                                console.log(
+                                    "Whisper original:",
+                                    spokenText
+                                );
+
+                                if (isTakbeer(spokenText)) {
+
+                                    recognizedText.textContent =
+                                        "اللہ اکبر";
+
+                                    micStatus.textContent =
+                                        "Takbeer recognized.";
+
+                                } else {
+
+                                    recognizedText.textContent =
+                                        "کوئی مستند تکبیر نہیں ملی";
+
+                                    micStatus.textContent =
+                                        "Listening for Takbeer...";
+
+                                }
+
+                            } catch (error) {
+
+                                console.error(error);
+
+                                micStatus.textContent =
+                                    "Recognition error: " + error.message;
+
+                            } finally {
+
+                                URL.revokeObjectURL(audioUrl);
+
+                                processing = false;
+                            }
+
+                            if (!stopped) {
+                                nextTimer = setTimeout(
+                                    listenPart,
+                                    300
+                                );
+                            }
+                        };
+
+
+                        recorder.start();
+
+                        nextTimer = setTimeout(() => {
+
+                            if (
+                                recorder.state === "recording"
+                            ) {
+                                recorder.stop();
+                            }
+
+                        }, 5000);
+
+                    } catch (error) {
+
+                        processing = false;
+
+                        console.error(error);
+
+                        micStatus.textContent =
+                            "Recording error: " + error.message;
+
+                        window.stopWhisperListening();
+                    }
+                }
+
+                listenPart();
+
+            } catch (error) {
+
+                micStatus.textContent =
+                    "Microphone error: " + error.message;
+
+                console.error(error);
+            }
+        };
+
+    </script>
+
+</head>
+
+
+<body>
+
+<div class="app-shell">
+
+    <!-- HEADER -->
+
+    <header class="top-header">
+
+        <div class="brand-mark">ع</div>
+
+        <div class="brand-text">
+
+            <h1>عِش اللحظة</h1>
+
+            <p>نماز کے ساتھ جڑے رہیے</p>
+
+        </div>
+
+    </header>
+
+
+    <!-- DIGITAL CLOCK -->
+
+    <section class="clock-card">
+
+        <p class="clock-label">
+            آپ کا موجودہ وقت
+        </p>
+
+        <div id="digitalClock">00:00:00</div>
+
+        <div id="clockDate">Loading date...</div>
+
+        <div class="clock-decoration">
+            ✦ &nbsp; ✧ &nbsp; ✦
+        </div>
+
+    </section>
+
+
+    <!-- PRAYER COUNTER -->
+
+    <main class="prayer-card">
+
+        <div class="section-heading">
+
+            <span class="heading-line"></span>
+
+            <span>نماز کی رہنمائی</span>
+
+            <span class="heading-line"></span>
+
+        </div>
+
+        <h2>عشاء کی نماز</h2>
+
+        <p class="rakat-label">
+            موجودہ رکعت
+        </p>
+
+        <div id="rakatNumber" class="rakat-number">
+            1
+        </div>
+
+        <p id="status" class="status-text">
+            تجربہ شروع کرنے کے لیے تیار
+        </p>
+
+
+        <!-- MANUAL RAKAT BUTTONS -->
+
+        <div class="buttons">
+
+            <button onclick="testRakat(1)">
+                پہلی رکعت
+            </button>
+
+            <button onclick="testRakat(2)">
+                دوسری رکعت
+            </button>
+
+            <button onclick="testRakat(3)">
+                تیسری رکعت
+            </button>
+
+            <button onclick="testRakat(4)">
+                چوتھی رکعت
+            </button>
+
+            <button class="salam" onclick="testSalam()">
+                سلام
+            </button>
+
+        </div>
+
+
+        <!-- RAKAT COUNTER TEST -->
+
+        <div class="buttons">
+
+            <button onclick="completeRakatTest()">
+                Complete Rak‘at
+            </button>
+
+            <button onclick="resetRakatCount()">
+                Reset Count
+            </button>
+
+        </div>
+
+
+        <!-- ISHA TEST -->
+
+        <div class="buttons">
+
+            <button onclick="completeIshaRakat()">
+                Complete Isha Rak‘at
+            </button>
+
+            <button onclick="resetIshaTest()">
+                Reset Isha Test
+            </button>
+
+        </div>
+
+    </main>
+
+
+    <!-- PRAYER STAGE -->
+
+    <section class="stage-card" id="prayerStage">
+
+        <div class="stage-icon">☾</div>
+
+        <h2>Namaz Stage</h2>
+
+        <p id="stageStatus">
+            Abhi namaz ka stage maloom nahi.
+        </p>
+
+        <div class="stage-divider"></div>
+
+        <p id="rakatStatus">
+            Rak‘at: Abhi maloom nahi
+        </p>
+
+    </section>
+
+
+    <!-- AI VOICE ASSISTANT -->
+
+    <section class="mic-card">
+
+        <div class="section-heading">
+
+            <span class="heading-line"></span>
+
+            <span>AI Voice Assistant</span>
+
+            <span class="heading-line"></span>
+
+        </div>
+
+
+        <button
+            class="action-button gold-button"
+            onclick="loadWhisperModel()">
+
+            AI Model Load Karein
+
+        </button>
+
+
+        <button
+            class="action-button"
+            onclick="testWhisperMic()">
+
+            🎤 Microphone Test
+
+        </button>
+
+
+        <button
+            class="action-button listen-button"
+            onclick="startWhisperListening()">
+
+            🎙️ Start Listening
+
+        </button>
+
+
+        <button
+            class="action-button stop-button"
+            onclick="
+                if (window.stopWhisperListening) {
+                    window.stopWhisperListening();
+                }
+            ">
+
+            Stop Listening
+
+        </button>
+
+
+        <!-- MICROPHONE STATUS -->
+
+        <div class="mic-status-box">
+
+            <span class="status-dot"></span>
+
+            <p id="micStatus">
+                مائیک ابھی بند ہے
+            </p>
+
+        </div>
+
+
+        <!-- RECOGNIZED VOICE TEXT -->
+
+        <div class="mic-status-box">
+
+            <h3>Recognized Voice Text</h3>
+
+            <p id="recognizedText">
+                Abhi koi voice text nahi mila.
+            </p>
+
+        </div>
+
+    </section>
+
+
+    <!-- FOOTER -->
+
+    <footer>
+
+        <p>عِش اللحظة</p>
+
+        <span>
+            نماز میں سکون، دل میں حضور
+        </span>
+
+    </footer>
+
+</div>
+
+
+<!-- DIGITAL CLOCK SCRIPT -->
+
+<script>
+
+    function updateDigitalClock() {
+
+        const now = new Date();
+
+        document.getElementById("digitalClock").textContent =
+
+            now.toLocaleTimeString("en-GB", {
+
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false
+
+            });
+
+
+        document.getElementById("clockDate").textContent =
+
+            now.toLocaleDateString("en-GB", {
+
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+
+            });
+
     }
-};
+
+    updateDigitalClock();
+
+    setInterval(updateDigitalClock, 1000);
 
 </script>
-
 
 
 <!-- YOUR EXISTING JAVASCRIPT -->
