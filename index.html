@@ -88,64 +88,134 @@
         };
 
 
-        // =====================================
-        // 3. START WHISPER LISTENING
-        // =====================================
+       
+// =====================================
+// START WHISPER LISTENING — TAKBEER FILTER
+// =====================================
 
-        window.startWhisperListening = async function () {
+window.startWhisperListening = async function () {
 
-            const micStatus =
-                document.getElementById("micStatus");
+    const micStatus = document.getElementById("micStatus");
+    const recognizedText = document.getElementById("recognizedText");
 
-            const recognizedText =
-                document.getElementById("recognizedText");
+    try {
+        if (!window.whisperTranscriber) {
+            micStatus.textContent = "Pehle AI model load karein.";
+            return;
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true
+        });
+
+        micStatus.textContent = "Listening for Takbeer...";
+        recognizedText.textContent = "اللہ اکبر ka intezar hai...";
+
+        let stopped = false;
+        let activeRecorder = null;
+        let nextTimer = null;
+
+        window.stopWhisperListening = function () {
+            stopped = true;
+
+            if (nextTimer) clearTimeout(nextTimer);
+
+            if (activeRecorder &&
+                activeRecorder.state === "recording") {
+                activeRecorder.stop();
+            }
+
+            stream.getTracks().forEach(track => track.stop());
+
+            micStatus.textContent = "Listening stopped.";
+        };
+
+        async function listenPart() {
+            if (stopped) return;
 
             try {
+                activeRecorder = new MediaRecorder(stream);
+                const chunks = [];
 
-                if (!window.whisperTranscriber) {
+                activeRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) {
+                        chunks.push(event.data);
+                    }
+                };
 
-                    micStatus.textContent =
-                        "Pehle AI model load karein.";
+                activeRecorder.onstop = async function () {
+                    if (stopped) return;
 
-                    return;
-                }
+                    try {
+                        const audioBlob = new Blob(chunks, {
+                            type: activeRecorder.mimeType || "audio/webm"
+                        });
 
-                const stream =
-                    await navigator.mediaDevices.getUserMedia({
-                        audio: true
-                    });
+                        const audioUrl = URL.createObjectURL(audioBlob);
 
-                micStatus.textContent =
-                    "Listening started...";
+                        const result = await window.whisperTranscriber(
+                            audioUrl,
+                            {
+                                language: "arabic",
+                                task: "transcribe"
+                            }
+                        );
 
-                recognizedText.textContent =
-                    "Listening for voice...";
+                        URL.revokeObjectURL(audioUrl);
 
-                let stopped = false;
+                        if (stopped) return;
 
-                let activeRecorder = null;
-                let nextTimer = null;
+                        const text = (result.text || "")
+                            .replace(/[ًٌٍَُِّْـ]/g, "")
+                            .replace(/[إأآٱ]/g, "ا")
+                            .replace(/\s+/g, " ")
+                            .trim();
 
-                window.stopWhisperListening = function () {
+                        // Accept only the exact Arabic Takbeer phrase
+                        const takbeerPattern =
+                            /(^|\s)الله\s+اكبر(\s|$)/;
 
-                    stopped = true;
+                        if (takbeerPattern.test(text)) {
+                            recognizedText.textContent = "اللہ اکبر";
+                            micStatus.textContent = "Takbeer detected.";
+                        } else {
+                            recognizedText.textContent =
+                                "اللہ اکبر ka intezar hai...";
+                        }
 
-                    if (nextTimer) {
-                        clearTimeout(nextTimer);
+                    } catch (error) {
+                        micStatus.textContent =
+                            "Recognition error: " + error.message;
                     }
 
-                    if (
-                        activeRecorder &&
-                        activeRecorder.state === "recording"
-                    ) {
+                    if (!stopped) {
+                        nextTimer = setTimeout(listenPart, 300);
+                    }
+                };
+
+                activeRecorder.start();
+
+                setTimeout(() => {
+                    if (activeRecorder &&
+                        activeRecorder.state === "recording") {
                         activeRecorder.stop();
                     }
+                }, 8000);
 
-                    stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                micStatus.textContent =
+                    "Recording error: " + error.message;
+                window.stopWhisperListening();
+            }
+        }
 
-                    micStatus.textContent =
-                        "Listening stopped.";
-                };
+        listenPart();
+
+    } catch (error) {
+        micStatus.textContent =
+            "Microphone error: " + error.message;
+    }
+};
 
 
                 // =====================================
