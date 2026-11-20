@@ -51,7 +51,67 @@
     } catch (error) {
         micStatus.textContent = "Microphone error: " + error.message;
     }
-};  
+window.startWhisperListening = async function () {
+    const micStatus = document.getElementById("micStatus");
+
+    try {
+        if (!window.whisperTranscriber) {
+            micStatus.textContent = "Pehle AI model load karein.";
+            return;
+        }
+
+        micStatus.textContent = "Microphone permission mang raha hai...";
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true
+        });
+
+        const recorder = new MediaRecorder(stream);
+        const chunks = [];
+
+        recorder.ondataavailable = event => {
+            if (event.data.size > 0) {
+                chunks.push(event.data);
+            }
+        };
+
+        recorder.onstop = async function () {
+            try {
+                micStatus.textContent = "Awaaz process ho rahi hai...";
+
+                const audioBlob = new Blob(chunks, {
+                    type: recorder.mimeType
+                });
+
+                const audioUrl = URL.createObjectURL(audioBlob);
+
+                const result = await window.whisperTranscriber(audioUrl);
+
+                micStatus.textContent = "Pehchane gaye alfaaz: " + result.text;
+
+                URL.revokeObjectURL(audioUrl);
+            } catch (error) {
+                micStatus.textContent = "Recognition error: " + error.message;
+            }
+
+            stream.getTracks().forEach(track => track.stop());
+        };
+
+        recorder.start();
+
+        micStatus.textContent = "Ab 5 seconds tak boliye...";
+
+        setTimeout(() => {
+            if (recorder.state === "recording") {
+                recorder.stop();
+            }
+        }, 5000);
+
+    } catch (error) {
+        micStatus.textContent = "Microphone error: " + error.message;
+    }
+};
+      
     </script>
 </head>
 
