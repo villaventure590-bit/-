@@ -186,3 +186,41 @@ window.stopMicrophoneTest = function () {
         micStatus.textContent = "Microphone test stopped.";
     }
 };
+
+// =====================================
+// 6. RAKAT COUNTING TEST
+// =====================================
+
+let currentRakat = 0;
+let currentStage = "";
+
+window.resetRakatCount = function () {
+    currentRakat = 0;
+    currentStage = "";
+
+    if (rakatNumber) {
+        rakatNumber.textContent = "0";
+    }
+
+    if (statusText) {
+        statusText.textContent = "Rak'at count reset ho gaya.";
+    }
+};
+
+window.completeRakatTest = function () {
+    if (currentRakat >= 4) {
+        statusText.textContent = "4 rak'at complete ho chuki hain.";
+        return;
+    }
+
+    currentRakat++;
+
+    rakatNumber.textContent = currentRakat;
+    statusText.textContent =
+        "Test: Rak'at number " + currentRakat;
+
+    if ("vibrate" in navigator) {
+        navigator.vibrate(200);
+    }
+};
+
