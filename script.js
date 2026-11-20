@@ -194,33 +194,24 @@ window.stopMicrophoneTest = function () {
 let currentRakat = 0;
 let currentStage = "";
 
+
+ 
 window.resetRakatCount = function () {
     currentRakat = 0;
     currentStage = "";
 
-    if (rakatNumber) {
-        rakatNumber.textContent = "0";
+    const numberDisplay =
+        document.getElementById("rakatNumber");
+
+    const messageDisplay =
+        document.getElementById("status");
+
+    if (numberDisplay) {
+        numberDisplay.textContent = "0";
     }
 
-    if (statusText) {
-        statusText.textContent = "Rak'at count reset ho gaya.";
-    }
-};
-
-window.completeRakatTest = function () {
-    if (currentRakat >= 4) {
-        statusText.textContent = "4 rak'at complete ho chuki hain.";
-        return;
-    }
-
-    currentRakat++;
-
-    rakatNumber.textContent = currentRakat;
-    statusText.textContent =
-        "Test: Rak'at number " + currentRakat;
-
-    if ("vibrate" in navigator) {
-        navigator.vibrate(200);
+    if (messageDisplay) {
+        messageDisplay.textContent = "Rak'at count reset ho gaya.";
     }
 };
 
