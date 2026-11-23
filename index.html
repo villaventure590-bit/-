@@ -3,676 +3,622 @@
 <html lang="ur" dir="rtl">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>عِش اللحظة</title>
 
-    <title>عِش اللحظة</title>
+<link rel="stylesheet" href="style.css">
 
-    <link rel="stylesheet" href="style.css">
+<script type="module">
 
-    <script type="module">
+import { pipeline } from
+"https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
 
-        import { pipeline } from
-            "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+// =====================================
+// GLOBAL VARIABLES
+// =====================================
 
-        // =====================================
-        // GLOBAL SETTINGS
-        // =====================================
+window.whisperTranscriber = null;
+window.stopWhisperListening = null;
 
-        window.whisperTranscriber = null;
-        window.stopWhisperListening = null;
+let modelLoading = false;
+let listening = false;
+let lastTakbeerVibration = 0;
 
-        let modelLoading = false;
-        let listening = false;
-        let lastTakbeerVibration = 0;
+// =====================================
+// 1. LOAD WHISPER MODEL
+// =====================================
 
-        // =====================================
-        // 1. LOAD WHISPER AI MODEL
-        // =====================================
+window.loadWhisperModel = async function () {
 
-        window.loadWhisperModel = async function () {
+    const status = document.getElementById("micStatus");
 
-            const micStatus =
-                document.getElementById("micStatus");
+    if (modelLoading) return;
 
-            if (modelLoading) return;
+    if (window.whisperTranscriber) {
+        status.textContent = "AI model already loaded!";
+        return;
+    }
 
-            if (window.whisperTranscriber) {
-                micStatus.textContent = "AI model already loaded!";
-                return;
+    try {
+
+        modelLoading = true;
+        status.textContent = "Loading Whisper AI model...";
+
+        window.whisperTranscriber = await pipeline(
+            "automatic-speech-recognition",
+            "Xenova/whisper-tiny",
+            { dtype: "q8" }
+        );
+
+        status.textContent = "AI model loaded successfully!";
+
+    } catch (error) {
+
+        console.error("MODEL ERROR:", error);
+
+        status.textContent = "Model error: " + error.message;
+
+    } finally {
+
+        modelLoading = false;
+
+    }
+};
+
+
+// =====================================
+// 2. MICROPHONE TEST
+// =====================================
+
+window.testWhisperMic = async function () {
+
+    const status = document.getElementById("micStatus");
+
+    let stream;
+
+    try {
+
+        status.textContent = "Requesting microphone...";
+
+        stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                autoGainControl: true,
+                noiseSuppression: true,
+                echoCancellation: true
             }
+        });
 
-            try {
+        status.textContent = "Microphone working! 🎤";
 
-                modelLoading = true;
+    } catch (error) {
 
-                micStatus.textContent =
-                    "AI model loading... Please wait.";
+        status.textContent = "Microphone error: " + error.message;
+        console.error(error);
 
-                window.whisperTranscriber = await pipeline(
-                    "automatic-speech-recognition",
-                    "Xenova/whisper-tiny",
-                    {
-                        dtype: "q8"
-                    }
-                );
+    } finally {
 
-                micStatus.textContent =
-                    "AI model loaded successfully!";
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
 
-            } catch (error) {
-
-                console.error("MODEL ERROR:", error);
-
-                micStatus.textContent =
-                    "Model error: " + error.message;
-
-                window.whisperTranscriber = null;
-
-            } finally {
-
-                modelLoading = false;
-
-            }
-        };
+    }
+};
 
 
-        // =====================================
-        // 2. TEST MICROPHONE
-        // =====================================
+// =====================================
+// 3. VIBRATION TEST
+// =====================================
 
-        window.testWhisperMic = async function () {
+window.testDeviceVibration = function () {
 
-            const micStatus =
-                document.getElementById("micStatus");
+    const status = document.getElementById("micStatus");
 
-            let stream;
+    if (typeof navigator.vibrate === "function") {
 
-            try {
+        navigator.vibrate(300);
+        status.textContent = "Vibration working!";
 
-                if (!navigator.mediaDevices ||
-                    !navigator.mediaDevices.getUserMedia) {
+    } else {
 
-                    throw new Error(
-                        "Microphone requires HTTPS or localhost."
-                    );
-                }
+        status.textContent = "Vibration not supported.";
 
-                micStatus.textContent =
-                    "Requesting microphone permission...";
-
-                stream =
-                    await navigator.mediaDevices.getUserMedia({
-                        audio: {
-                            autoGainControl: true,
-                            noiseSuppression: true,
-                            echoCancellation: true
-                        }
-                    });
-
-                micStatus.textContent =
-                    "Microphone working! 🎤";
-
-            } catch (error) {
-
-                micStatus.textContent =
-                    "Microphone error: " + error.message;
-
-                console.error(error);
-
-            } finally {
-
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-
-            }
-        };
+    }
+};
 
 
-        // =====================================
-        // 3. TEST DEVICE VIBRATION
-        // =====================================
+// =====================================
+// 4. NORMALIZE TEXT
+// =====================================
 
-        window.testDeviceVibration = function () {
+function normalizeArabic(text) {
 
-            const micStatus =
-                document.getElementById("micStatus");
+    return text
+        .normalize("NFKC")
+        .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+        .replace(/[أإآٱ]/g, "ا")
+        .replace(/ى/g, "ي")
+        .replace(/ک/g, "ك")
+        .replace(/[.,!?،؛؟]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+}
+
+
+// =====================================
+// 5. TAKBEER DETECTION
+// =====================================
+
+function isTakbeer(text) {
+
+    if (!text) return false;
+
+    const clean = normalizeArabic(text);
+
+    // Arabic text
+    const arabicPattern = /الله\s*اكبر/;
+
+    // English pronunciation variations
+    const english = clean
+        .replace(/[-_]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const englishPattern =
+        /\ballah(?:u|o)?\s+akbar\b/;
+
+    return (
+        arabicPattern.test(clean) ||
+        englishPattern.test(english)
+    );
+}
+
+
+// =====================================
+// 6. DISPLAY WHISPER RESULT
+// =====================================
+
+window.handleTakbeerDetection = function (text) {
+
+    const recognizedText =
+        document.getElementById("recognizedText");
+
+    const status =
+        document.getElementById("micStatus");
+
+    if (!recognizedText || !status) return;
+
+    const rawText = (text || "").trim();
+
+    console.log("RAW WHISPER RESULT:", rawText);
+
+    // Always show original AI result
+
+    if (rawText) {
+
+        recognizedText.textContent =
+            "Whisper heard: " + rawText;
+
+    } else {
+
+        recognizedText.textContent =
+            "No speech recognized in this recording.";
+
+    }
+
+    // Check Takbeer
+
+    if (isTakbeer(rawText)) {
+
+        status.textContent = "TAKBEER RECOGNIZED! ✓";
+
+        const now = Date.now();
+
+        if (now - lastTakbeerVibration >= 2000) {
 
             if (typeof navigator.vibrate === "function") {
 
-                navigator.vibrate(300);
-
-                micStatus.textContent =
-                    "Vibration test sent!";
-
-            } else {
-
-                micStatus.textContent =
-                    "Vibration not supported on this device.";
+                navigator.vibrate(150);
 
             }
+
+            lastTakbeerVibration = now;
+
+        }
+
+        console.log("TAKBEER DETECTED!");
+
+    } else {
+
+        status.textContent =
+            "Listening for Takbeer...";
+
+    }
+};
+
+
+// =====================================
+// 7. STOP LISTENING
+// =====================================
+
+window.stopWhisperListening = null;
+
+
+// =====================================
+// 8. START LISTENING
+// =====================================
+
+window.startWhisperListening = async function () {
+
+    const status = document.getElementById("micStatus");
+
+    const recognizedText =
+        document.getElementById("recognizedText");
+
+    if (listening) {
+
+        status.textContent = "Already listening.";
+        return;
+
+    }
+
+    if (!window.whisperTranscriber) {
+
+        status.textContent = "Please load AI model first.";
+        return;
+
+    }
+
+    let stream = null;
+
+    try {
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+
+            throw new Error(
+                "Open website using HTTPS or localhost."
+            );
+
+        }
+
+        status.textContent = "Opening microphone...";
+
+        stream = await navigator.mediaDevices.getUserMedia({
+
+            audio: {
+                autoGainControl: true,
+                noiseSuppression: true,
+                echoCancellation: true
+            }
+
+        });
+
+        if (listening) {
+
+            stream.getTracks().forEach(track => track.stop());
+            return;
+
+        }
+
+        listening = true;
+
+        let stopped = false;
+        let processing = false;
+        let recorder = null;
+        let recordingTimer = null;
+        let restartTimer = null;
+
+        recognizedText.textContent =
+            "Waiting for Allahu Akbar...";
+
+        status.textContent =
+            "Microphone active. Listening...";
+
+
+        // =====================================
+        // STOP FUNCTION
+        // =====================================
+
+        window.stopWhisperListening = function () {
+
+            if (stopped) return;
+
+            stopped = true;
+            listening = false;
+
+            clearTimeout(recordingTimer);
+            clearTimeout(restartTimer);
+
+            if (recorder && recorder.state !== "inactive") {
+
+                recorder.onstop = null;
+                recorder.stop();
+
+            }
+
+            stream.getTracks().forEach(track => track.stop());
+
+            status.textContent = "Listening stopped.";
+
+            window.stopWhisperListening = null;
+
+            console.log("LISTENING STOPPED");
+
         };
 
 
         // =====================================
-        // 4. NORMALIZE ARABIC AND ENGLISH TEXT
+        // SELECT AUDIO FORMAT
         // =====================================
 
-        function normalizeArabic(text) {
+        function getRecorderOptions() {
 
-            return text
+            if (MediaRecorder.isTypeSupported(
+                "audio/webm;codecs=opus"
+            )) {
 
-                .normalize("NFKC")
+                return {
+                    mimeType: "audio/webm;codecs=opus"
+                };
 
-                .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+            }
 
-                .replace(/[أإآٱ]/g, "ا")
+            if (MediaRecorder.isTypeSupported("audio/webm")) {
 
-                .replace(/ى/g, "ي")
+                return {
+                    mimeType: "audio/webm"
+                };
 
-                .replace(/ک/g, "ك")
+            }
 
-                .replace(/[.,!?،؛؟]/g, "")
+            if (MediaRecorder.isTypeSupported("audio/mp4")) {
 
-                .replace(/\s+/g, " ")
+                return {
+                    mimeType: "audio/mp4"
+                };
 
-                .trim()
+            }
 
-                .toLowerCase();
+            return {};
+
         }
 
 
         // =====================================
-        // 5. TAKBEER DETECTION
+        // START RECORDING PART
         // =====================================
 
-        function isTakbeer(text) {
+        async function listenPart() {
 
-            if (!text) return false;
-
-            const cleanText =
-                normalizeArabic(text);
-
-            // Arabic recognition
-
-            const arabicPattern =
-                /الله\s*اكبر/;
-
-            // English transliteration recognition
-
-            const englishText = cleanText
-                .replace(/[.,!?،؛؟]/g, " ")
-                .replace(/[-_]/g, " ")
-                .replace(/\s+/g, " ")
-                .trim();
-
-            const englishPattern =
-                /\ballah(?:u|o)?\s+akbar\b/;
-
-            return (
-                arabicPattern.test(cleanText) ||
-                englishPattern.test(englishText)
-            );
-        }
-
-
-        // =====================================
-        // 6. HANDLE WHISPER RESULT
-        // =====================================
-
-        window.handleTakbeerDetection = function (text) {
-
-            const recognizedText =
-                document.getElementById("recognizedText");
-
-            const micStatus =
-                document.getElementById("micStatus");
-
-            if (!recognizedText || !micStatus) return;
-
-            const rawText = (text || "").trim();
-
-            // Show original Whisper text
-
-            recognizedText.textContent = rawText
-                ? "Whisper heard: " + rawText
-                : "No speech recognized.";
-
-            console.log(
-                "RAW WHISPER TEXT:",
-                rawText
-            );
-
-            // Check only Takbeer
-
-            if (isTakbeer(rawText)) {
-
-                micStatus.textContent =
-                    "Takbeer recognized! ✓";
-
-                const now = Date.now();
-
-                // Avoid repeated vibration
-
-                if (
-                    now - lastTakbeerVibration >= 2000
-                ) {
-
-                    if (
-                        typeof navigator.vibrate === "function"
-                    ) {
-
-                        navigator.vibrate(150);
-
-                    }
-
-                    lastTakbeerVibration = now;
-
-                }
-
-                console.log("TAKBEER DETECTED!");
-
-            } else {
-
-                micStatus.textContent =
-                    "Listening for Takbeer...";
-
-            }
-        };
-
-
-        // =====================================
-        // 7. STOP LISTENING
-        // =====================================
-
-        window.stopWhisperListening = null;
-
-        // =====================================
-        // 8. START WHISPER LISTENING
-        // =====================================
-
-        window.startWhisperListening = async function () {
-
-            const micStatus =
-                document.getElementById("micStatus");
-
-            const recognizedText =
-                document.getElementById("recognizedText");
-
-            if (listening) {
-
-                micStatus.textContent =
-                    "Already listening.";
-
-                return;
-            }
-
-            if (!window.whisperTranscriber) {
-
-                micStatus.textContent =
-                    "Please load AI model first.";
-
-                return;
-            }
-
-            let stream = null;
+            if (stopped || processing) return;
 
             try {
 
-                if (!navigator.mediaDevices ||
-                    !navigator.mediaDevices.getUserMedia) {
+                recorder = new MediaRecorder(
+                    stream,
+                    getRecorderOptions()
+                );
 
-                    throw new Error(
-                        "Microphone requires HTTPS or localhost."
-                    );
-                }
+                const currentRecorder = recorder;
 
-                if (!window.MediaRecorder) {
+                const chunks = [];
 
-                    throw new Error(
-                        "MediaRecorder is not supported."
-                    );
-                }
+                currentRecorder.ondataavailable = function (event) {
 
-                micStatus.textContent =
-                    "Requesting microphone permission...";
-
-                stream =
-                    await navigator.mediaDevices.getUserMedia({
-                        audio: {
-                            autoGainControl: true,
-                            noiseSuppression: true,
-                            echoCancellation: true
-                        }
-                    });
-
-                // If another start/stop action occurred
-                // while permission was being requested.
-
-                if (listening) {
-                    stream.getTracks().forEach(
-                        track => track.stop()
-                    );
-                    return;
-                }
-
-                listening = true;
-
-                micStatus.textContent =
-                    "Listening for Takbeer...";
-
-                recognizedText.textContent =
-                    "Waiting for speech...";
-
-                let stopped = false;
-                let processing = false;
-                let activeRecorder = null;
-                let nextTimer = null;
-
-                // =====================================
-                // STOP FUNCTION
-                // =====================================
-
-                window.stopWhisperListening = function () {
-
-                    if (stopped) return;
-
-                    stopped = true;
-
-                    listening = false;
-
-                    if (nextTimer !== null) {
-                        clearTimeout(nextTimer);
-                        nextTimer = null;
+                    if (event.data && event.data.size > 0) {
+                        chunks.push(event.data);
                     }
-
-                    if (
-                        activeRecorder &&
-                        activeRecorder.state !== "inactive"
-                    ) {
-
-                        activeRecorder.onstop = null;
-                        activeRecorder.stop();
-
-                    }
-
-                    stream.getTracks().forEach(
-                        track => track.stop()
-                    );
-
-                    micStatus.textContent =
-                        "Listening stopped.";
-
-                    window.stopWhisperListening = null;
-
-                    console.log("WHISPER STOPPED");
 
                 };
 
 
                 // =====================================
-                // RECORD AUDIO IN SHORT PARTS
+                // RECORDING FINISHED
                 // =====================================
 
-                async function listenPart() {
+                currentRecorder.onstop = async function () {
 
-                    if (stopped || processing) return;
+                    if (stopped) return;
 
-                    let recorder;
+                    if (chunks.length === 0) {
+
+                        status.textContent =
+                            "No audio received. Listening again...";
+
+                        scheduleNext();
+                        return;
+
+                    }
+
+                    processing = true;
+
+                    const audioBlob = new Blob(
+                        chunks,
+                        {
+                            type: currentRecorder.mimeType ||
+                                "audio/webm"
+                        }
+                    );
+
+                    const audioUrl =
+                        URL.createObjectURL(audioBlob);
 
                     try {
 
-                        // Select supported recording format
+                        recognizedText.textContent =
+                            "Audio recorded. AI is processing...";
 
-                        let options = {};
+                        status.textContent =
+                            "Whisper processing audio...";
 
-                        if (
-                            MediaRecorder.isTypeSupported(
-                                "audio/webm;codecs=opus"
-                            )
-                        ) {
-
-                            options.mimeType =
-                                "audio/webm;codecs=opus";
-
-                        } else if (
-                            MediaRecorder.isTypeSupported(
-                                "audio/webm"
-                            )
-                        ) {
-
-                            options.mimeType = "audio/webm";
-
-                        } else if (
-                            MediaRecorder.isTypeSupported(
-                                "audio/mp4"
-                            )
-                        ) {
-
-                            options.mimeType = "audio/mp4";
-
-                        }
-
-                        recorder = new MediaRecorder(
-                            stream,
-                            options
+                        console.log(
+                            "AUDIO SIZE:",
+                            audioBlob.size
                         );
 
-                        activeRecorder = recorder;
+                        // IMPORTANT:
+                        // Automatic language detection.
+                        // Do not force Arabic.
+                        // Whisper can attempt to recognize
+                        // Arabic, Urdu, English and Pashto.
 
-                        const chunks = [];
-
-                        recorder.ondataavailable = function (event) {
-
-                            if (event.data && event.data.size > 0) {
-                                chunks.push(event.data);
-                            }
-
-                        };
-
-
-                        // =====================================
-                        // PROCESS AUDIO AFTER RECORDING
-                        // =====================================
-
-                        recorder.onstop = async function () {
-
-                            if (stopped) return;
-
-                            if (chunks.length === 0) {
-
-                                scheduleNext();
-                                return;
-
-                            }
-
-                            processing = true;
-
-                            const audioBlob = new Blob(
-                                chunks,
+                        const result =
+                            await window.whisperTranscriber(
+                                audioUrl,
                                 {
-                                    type: recorder.mimeType ||
-                                        "audio/webm"
+                                    task: "transcribe",
+                                    return_timestamps: false
                                 }
                             );
 
-                            const audioUrl =
-                                URL.createObjectURL(audioBlob);
+                        console.log(
+                            "COMPLETE WHISPER RESULT:",
+                            result
+                        );
 
-                            try {
+                        if (stopped) return;
 
-                                micStatus.textContent =
-                                    "AI processing audio...";
+                        const spokenText =
+                            typeof result === "string"
+                                ? result
+                                : (result?.text || "");
 
-                                // IMPORTANT:
-                                // Do not force Arabic.
-                                // Whisper automatically detects
-                                // the spoken language.
+                        // Always show result
 
-                                const result =
-                                    await window.whisperTranscriber(
-                                        audioUrl,
-                                        {
-                                            task: "transcribe",
-                                            return_timestamps: false
-                                        }
-                                    );
-
-                                if (stopped) return;
-
-                                console.log(
-                                    "WHISPER FULL RESULT:",
-                                    result
-                                );
-
-                                const spokenText =
-                                    (result.text || "").trim();
-
-                                console.log(
-                                    "WHISPER ORIGINAL:",
-                                    spokenText
-                                );
-
-                                // Process only the latest result
-
-                                window.handleTakbeerDetection(
-                                    spokenText
-                                );
-
-                            } catch (error) {
-
-                                console.error(
-                                    "RECOGNITION ERROR:",
-                                    error
-                                );
-
-                                if (!stopped) {
-
-                                    micStatus.textContent =
-                                        "Recognition error: " +
-                                        error.message;
-
-                                }
-
-                            } finally {
-
-                                URL.revokeObjectURL(audioUrl);
-
-                                processing = false;
-
-                            }
-
-                            if (!stopped) {
-                                scheduleNext();
-                            }
-
-                        };
-
-
-                        // =====================================
-                        // START RECORDING
-                        // =====================================
-
-                        recorder.start();
-
-                        micStatus.textContent =
-                            "Listening for Takbeer...";
-
-                        // Four-second audio segments
-
-                        nextTimer = setTimeout(function () {
-
-                            if (
-                                !stopped &&
-                                recorder.state === "recording"
-                            ) {
-
-                                recorder.stop();
-
-                            }
-
-                        }, 4000);
-
+                        window.handleTakbeerDetection(
+                            spokenText
+                        );
 
                     } catch (error) {
 
                         console.error(
-                            "RECORDING ERROR:",
+                            "WHISPER ERROR:",
                             error
                         );
 
                         if (!stopped) {
 
-                            micStatus.textContent =
-                                "Recording error: " +
+                            recognizedText.textContent =
+                                "Recognition failed: " +
                                 error.message;
 
-                            window.stopWhisperListening();
+                            status.textContent =
+                                "Recognition error.";
 
                         }
 
+                    } finally {
+
+                        URL.revokeObjectURL(audioUrl);
+
+                        processing = false;
+
                     }
 
-                }
+                    if (!stopped) {
+                        scheduleNext();
+                    }
+
+                };
 
 
                 // =====================================
-                // SCHEDULE NEXT RECORDING
+                // START AUDIO RECORDING
                 // =====================================
 
-                function scheduleNext() {
+                currentRecorder.start();
 
-                    if (stopped) return;
+                status.textContent =
+                    "Recording voice... Speak clearly.";
 
-                    if (nextTimer !== null) {
-                        clearTimeout(nextTimer);
+                recognizedText.textContent =
+                    "Recording audio...";
+
+                // Longer recording for better speech context
+
+                recordingTimer = setTimeout(function () {
+
+                    if (
+                        !stopped &&
+                        currentRecorder.state === "recording"
+                    ) {
+
+                        status.textContent =
+                            "Recording finished. Processing...";
+
+                        currentRecorder.stop();
+
                     }
 
-                    nextTimer = setTimeout(function () {
-
-                        if (!stopped && !processing) {
-                            listenPart();
-                        }
-
-                    }, 250);
-
-                }
-
-
-                // START FIRST RECORDING
-
-                listenPart();
+                }, 8000);
 
 
             } catch (error) {
 
-                console.error(
-                    "MICROPHONE START ERROR:",
-                    error
-                );
+                console.error("RECORDING ERROR:", error);
 
-                listening = false;
+                if (!stopped) {
 
-                if (stream) {
+                    status.textContent =
+                        "Recording error: " + error.message;
 
-                    stream.getTracks().forEach(
-                        track => track.stop()
-                    );
+                    window.stopWhisperListening();
 
                 }
 
-                micStatus.textContent =
-                    "Microphone error: " + error.message;
-
             }
 
-        };
+        }
 
-    </script>
+
+        // =====================================
+        // NEXT RECORDING
+        // =====================================
+
+        function scheduleNext() {
+
+            if (stopped) return;
+
+            clearTimeout(restartTimer);
+
+            restartTimer = setTimeout(function () {
+
+                if (!stopped && !processing) {
+                    listenPart();
+                }
+
+            }, 300);
+
+        }
+
+
+        // START FIRST PART
+
+        listenPart();
+
+    } catch (error) {
+
+        console.error("MICROPHONE ERROR:", error);
+
+        listening = false;
+
+        if (stream) {
+
+            stream.getTracks().forEach(track => track.stop());
+
+        }
+
+        status.textContent =
+            "Microphone error: " + error.message;
+
+    }
+
+};
+
+</script>
 
 </head>
-
 
 <body>
 
@@ -721,9 +667,7 @@
         <div class="section-heading">
 
             <span class="heading-line"></span>
-
             <span>نماز کی رہنمائی</span>
-
             <span class="heading-line"></span>
 
         </div>
@@ -747,25 +691,15 @@
 
         <div class="buttons">
 
-            <button onclick="testRakat(1)">
-                پہلی رکعت
-            </button>
+            <button onclick="testRakat(1)">پہلی رکعت</button>
 
-            <button onclick="testRakat(2)">
-                دوسری رکعت
-            </button>
+            <button onclick="testRakat(2)">دوسری رکعت</button>
 
-            <button onclick="testRakat(3)">
-                تیسری رکعت
-            </button>
+            <button onclick="testRakat(3)">تیسری رکعت</button>
 
-            <button onclick="testRakat(4)">
-                چوتھی رکعت
-            </button>
+            <button onclick="testRakat(4)">چوتھی رکعت</button>
 
-            <button class="salam" onclick="testSalam()">
-                سلام
-            </button>
+            <button class="salam" onclick="testSalam()">سلام</button>
 
         </div>
 
@@ -830,9 +764,7 @@
         <div class="section-heading">
 
             <span class="heading-line"></span>
-
             <span>AI Voice Assistant</span>
-
             <span class="heading-line"></span>
 
         </div>
@@ -930,42 +862,41 @@
 </div>
 
 
-<!-- DIGITAL CLOCK SCRIPT -->
+<!-- DIGITAL CLOCK -->
 
 <script>
 
-    function updateDigitalClock() {
+function updateDigitalClock() {
 
-        const now = new Date();
+    const now = new Date();
 
-        document.getElementById("digitalClock").textContent =
+    document.getElementById("digitalClock").textContent =
 
-            now.toLocaleTimeString("en-GB", {
+        now.toLocaleTimeString("en-GB", {
 
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: false
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false
 
-            });
+        });
 
+    document.getElementById("clockDate").textContent =
 
-        document.getElementById("clockDate").textContent =
+        now.toLocaleDateString("en-GB", {
 
-            now.toLocaleDateString("en-GB", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric"
 
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric"
+        });
 
-            });
+}
 
-    }
+updateDigitalClock();
 
-    updateDigitalClock();
-
-    setInterval(updateDigitalClock, 1000);
+setInterval(updateDigitalClock, 1000);
 
 </script>
 
@@ -975,5 +906,4 @@
 <script src="script.js"></script>
 
 </body>
-
 </html>
