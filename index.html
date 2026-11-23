@@ -30,7 +30,7 @@
 
                 window.whisperTranscriber = await pipeline(
                     "automatic-speech-recognition",
-                  "Xenova/whisper-base",
+                  "Xenova/whisper-tiny",
                     { dtype: "q8" }
                 );
 
@@ -88,6 +88,25 @@
                     "Microphone error: " + error.message;
 
                 console.error(error);
+            }
+        };
+
+
+        // =====================================
+        // TEST PHONE VIBRATION
+        // =====================================
+
+        window.testDeviceVibration = function () {
+
+            const micStatus =
+                document.getElementById("micStatus");
+
+            if (typeof navigator.vibrate === "function") {
+                navigator.vibrate(300);
+                micStatus.textContent = "Vibration test sent!";
+            } else {
+                micStatus.textContent =
+                    "This browser/device does not support vibration.";
             }
         };
 
@@ -186,12 +205,9 @@
 
                     const cleanText = normalizeArabic(text);
 
-                    const acceptedPhrases = [
-                        "الله أكبر",
-                        "الله اكبر",
-                    ];
-
-                    return acceptedPhrases.includes(cleanText);
+                    // Both accepted spellings normalize to: الله اكبر
+                    // This also accepts repeated Takbeer in one transcript.
+                    return cleanText.includes("الله اكبر");
                 }
 
 
@@ -203,55 +219,46 @@
               
 let lastTakbeerVibration = 0;
 
-window.handleTakbeerDetection = function (text) {
+                window.handleTakbeerDetection = function (text) {
 
-    if (!recognizedText || !micStatus) return;
+                    if (!recognizedText || !micStatus) return;
 
-    const rawText = (text || "").trim();
+                    const rawText = (text || "").trim();
 
-    // Show original Whisper result
-    if (rawText) {
+                    recognizedText.textContent = rawText
+                        ? "Whisper heard: " + rawText
+                        : "Whisper ne koi text return nahi kiya.";
 
-        recognizedText.textContent =
-            "Whisper heard: " + rawText;
+                    console.log("RAW WHISPER TEXT:", rawText);
 
-    } else {
+                    if (isTakbeer(rawText)) {
 
-        recognizedText.textContent =
-            "Whisper ne koi text return nahi kiya.";
-    }
+                        micStatus.textContent = "Takbeer recognized!";
 
-    console.log("RAW WHISPER TEXT:", rawText);
+                        const now = Date.now();
 
-    // Check Takbeer
-    if (isTakbeer(rawText)) {
+                        // Prevent repeated vibration bursts within 2 seconds.
+                        if (now - lastTakbeerVibration >= 2000) {
 
-        micStatus.textContent =
-            "Takbeer recognized!";
+                            if (typeof navigator.vibrate === "function") {
+                                navigator.vibrate(150);
+                            } else {
+                                micStatus.textContent =
+                                    "Takbeer detected, but vibration is not supported by this browser.";
+                            }
 
-        const now = Date.now();
+                            lastTakbeerVibration = now;
+                        }
 
-        // Vibration with 2-second gap
-        if (now - lastTakbeerVibration >= 2000) {
+                        console.log("Takbeer detected!");
 
-            if ("vibrate" in navigator) {
-                navigator.vibrate(150);
-            }
+                    } else {
 
-            lastTakbeerVibration = now;
-        }
-
-        console.log("Takbeer detected!");
-
-    } else {
-
-        micStatus.textContent =
-            "Listening for Takbeer...";
-    }
-};
+                        micStatus.textContent = "Listening for Takbeer...";
+                    }
+                };
 
 
-                // =====================================
                 // RECORD AUDIO IN 5 SECOND PARTS
                 // =====================================
 
@@ -348,7 +355,7 @@ console.log("WHISPER FULL RESULT:", result);
                                 recorder.stop();
                             }
 
-                        }, 5000);
+                        }, 3500);
 
                     } catch (error) {
 
@@ -557,6 +564,14 @@ console.log("WHISPER FULL RESULT:", result);
             onclick="testWhisperMic()">
 
             🎤 Microphone Test
+
+        </button>
+
+        <button
+            class="action-button"
+            onclick="testDeviceVibration()">
+
+            📳 Test Vibration
 
         </button>
 
