@@ -463,15 +463,15 @@ window.startWhisperListening = async function () {
                         // Whisper can attempt to recognize
                         // Arabic, Urdu, English and Pashto.
 
-                        const result =
-                            await window.whisperTranscriber(
-                                audioUrl,
-                                {
-                                    task: "transcribe",
-                                    return_timestamps: false
-                                }
-                            );
-
+                        coconst result =
+    await window.whisperTranscriber(
+        audioUrl,
+        {
+            language: "arabic",
+            task: "transcribe",
+            return_timestamps: false
+        }
+    );
                         console.log(
                             "COMPLETE WHISPER RESULT:",
                             result
