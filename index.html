@@ -200,42 +200,55 @@
                 // RAW WHISPER TEXT DEBUGGING ADDED
                 // =====================================
 
-                window.handleTakbeerDetection = function (text) {
+              
+let lastTakbeerVibration = 0;
 
-                    if (!recognizedText || !micStatus) return;
+window.handleTakbeerDetection = function (text) {
 
-                    const rawText = (text || "").trim();
+    if (!recognizedText || !micStatus) return;
 
-                    // Show original Whisper result on screen
-                    if (rawText) {
+    const rawText = (text || "").trim();
 
-                        recognizedText.textContent =
-                            "Whisper heard: " + rawText;
+    // Show original Whisper result
+    if (rawText) {
 
-                    } else {
+        recognizedText.textContent =
+            "Whisper heard: " + rawText;
 
-                        recognizedText.textContent =
-                            "Whisper ne koi text return nahi kiya.";
+    } else {
 
-                    }
+        recognizedText.textContent =
+            "Whisper ne koi text return nahi kiya.";
+    }
 
-                    console.log("RAW WHISPER TEXT:", rawText);
+    console.log("RAW WHISPER TEXT:", rawText);
 
-                    // Check whether the original text is Takbeer
-                    if (isTakbeer(rawText)) {
+    // Check Takbeer
+    if (isTakbeer(rawText)) {
 
-                        micStatus.textContent =
-                            "Takbeer recognized!";
+        micStatus.textContent =
+            "Takbeer recognized!";
 
-                        console.log("Takbeer detected!");
+        const now = Date.now();
 
-                    } else {
+        // Vibration with 2-second gap
+        if (now - lastTakbeerVibration >= 2000) {
 
-                        micStatus.textContent =
-                            "Listening for Takbeer...";
+            if ("vibrate" in navigator) {
+                navigator.vibrate(150);
+            }
 
-                    }
-                };
+            lastTakbeerVibration = now;
+        }
+
+        console.log("Takbeer detected!");
+
+    } else {
+
+        micStatus.textContent =
+            "Listening for Takbeer...";
+    }
+};
 
 
                 // =====================================
