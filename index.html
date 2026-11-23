@@ -198,25 +198,39 @@
 
                 // =====================================
                 // AUTOMATIC TAKBEER DETECTION HANDLER
+                // RAW WHISPER TEXT DEBUGGING ADDED
                 // =====================================
 
                 window.handleTakbeerDetection = function (text) {
 
                     if (!recognizedText || !micStatus) return;
 
-                    if (isTakbeer(text)) {
+                    const rawText = (text || "").trim();
 
-                        recognizedText.textContent = "اللہ اکبر";
+                    // Show original Whisper result on screen
+                    if (rawText) {
 
-                        micStatus.textContent =
-                            "Takbeer recognized.";
-
-                        console.log("Takbeer detected!");
+                        recognizedText.textContent =
+                            "Whisper heard: " + rawText;
 
                     } else {
 
                         recognizedText.textContent =
-                            "کوئی مستند تکبیر نہیں ملی";
+                            "Whisper ne koi text return nahi kiya.";
+
+                    }
+
+                    console.log("RAW WHISPER TEXT:", rawText);
+
+                    // Check whether the original text is Takbeer
+                    if (isTakbeer(rawText)) {
+
+                        micStatus.textContent =
+                            "Takbeer recognized!";
+
+                        console.log("Takbeer detected!");
+
+                    } else {
 
                         micStatus.textContent =
                             "Listening for Takbeer...";
