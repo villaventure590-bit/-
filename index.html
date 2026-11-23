@@ -25,6 +25,7 @@ let modelLoading = false;
 let listening = false;
 let lastTakbeerVibration = 0;
 
+
 // =====================================
 // 1. LOAD WHISPER MODEL
 // =====================================
@@ -56,7 +57,6 @@ window.loadWhisperModel = async function () {
     } catch (error) {
 
         console.error("MODEL ERROR:", error);
-
         status.textContent = "Model error: " + error.message;
 
     } finally {
@@ -128,18 +128,26 @@ window.testDeviceVibration = function () {
 
 
 // =====================================
-// 4. NORMALIZE TEXT
+// 4. NORMALIZE RECOGNIZED TEXT
 // =====================================
 
-function normalizeArabic(text) {
+function normalizeTakbeerText(text) {
 
-    return text
+    return (text || "")
         .normalize("NFKC")
+
+        // Remove Arabic vowel marks and tatweel
         .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+
+        // Normalize Arabic and Urdu letters
         .replace(/[أإآٱ]/g, "ا")
         .replace(/ى/g, "ي")
-        .replace(/ک/g, "ك")
-        .replace(/[.,!?،؛؟]/g, " ")
+        .replace(/[کك]/g, "ك")
+        .replace(/[ہۀة]/g, "ه")
+
+        // Normalize English separators and punctuation
+        .replace(/[-_.,!?،؛؟'"()[\]]/g, " ")
+
         .replace(/\s+/g, " ")
         .trim()
         .toLowerCase();
@@ -147,36 +155,37 @@ function normalizeArabic(text) {
 
 
 // =====================================
-// 5. TAKBEER DETECTION
+// 5. STRICT TAKBEER DETECTION
 // =====================================
 
 function isTakbeer(text) {
 
     if (!text) return false;
 
-    const clean = normalizeArabic(text);
+    const clean = normalizeTakbeerText(text);
 
-    // Arabic text
-    const arabicPattern = /الله\s*اكبر/;
+    // Only exact Arabic / Urdu Takbeer
+    const arabicTakbeer = [
+        "الله اكبر",
+        "الله اكبر"
+    ];
 
-    // English pronunciation variations
-    const english = clean
-        .replace(/[-_]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    const englishPattern =
-        /\ballah(?:u|o)?\s+akbar\b/;
+    // Only exact English pronunciation
+    const englishTakbeer = [
+        "allah akbar",
+        "allahu akbar",
+        "allaho akbar"
+    ];
 
     return (
-        arabicPattern.test(clean) ||
-        englishPattern.test(english)
+        arabicTakbeer.includes(clean) ||
+        englishTakbeer.includes(clean)
     );
 }
 
 
 // =====================================
-// 6. DISPLAY WHISPER RESULT
+// 6. DISPLAY RESULT AND VIBRATE
 // =====================================
 
 window.handleTakbeerDetection = function (text) {
@@ -193,60 +202,46 @@ window.handleTakbeerDetection = function (text) {
 
     console.log("RAW WHISPER RESULT:", rawText);
 
-    // Always show original AI result
+    // Show every recognized result for debugging
+    recognizedText.textContent = rawText
+        ? "Whisper heard: " + rawText
+        : "No speech recognized.";
 
-    if (rawText) {
-
-        recognizedText.textContent =
-            "Whisper heard: " + rawText;
-
-    } else {
-
-        recognizedText.textContent =
-            "No speech recognized in this recording.";
-
-    }
-
-    // Check Takbeer
-
+    // IMPORTANT:
+    // Vibration is allowed only for exact Takbeer.
     if (isTakbeer(rawText)) {
 
-        status.textContent = "TAKBEER RECOGNIZED! ✓";
+        status.textContent = "ALLAHU AKBAR DETECTED! ✓";
 
         const now = Date.now();
 
+        // Prevent repeated vibration
         if (now - lastTakbeerVibration >= 2000) {
 
             if (typeof navigator.vibrate === "function") {
-
                 navigator.vibrate(150);
-
             }
 
             lastTakbeerVibration = now;
 
         }
 
-        console.log("TAKBEER DETECTED!");
+        console.log("EXACT TAKBEER DETECTED!");
 
     } else {
 
-        status.textContent =
-            "Listening for Takbeer...";
+        // No vibration for other words
+        status.textContent = "Listening for Allahu Akbar...";
+
+        console.log("NOT TAKBEER — NO VIBRATION");
 
     }
+
 };
 
 
 // =====================================
-// 7. STOP LISTENING
-// =====================================
-
-window.stopWhisperListening = null;
-
-
-// =====================================
-// 8. START LISTENING
+// 7. START LISTENING
 // =====================================
 
 window.startWhisperListening = async function () {
@@ -257,17 +252,13 @@ window.startWhisperListening = async function () {
         document.getElementById("recognizedText");
 
     if (listening) {
-
         status.textContent = "Already listening.";
         return;
-
     }
 
     if (!window.whisperTranscriber) {
-
         status.textContent = "Please load AI model first.";
         return;
-
     }
 
     let stream = null;
@@ -275,30 +266,22 @@ window.startWhisperListening = async function () {
     try {
 
         if (!navigator.mediaDevices?.getUserMedia) {
-
-            throw new Error(
-                "Open website using HTTPS or localhost."
-            );
-
+            throw new Error("Please use HTTPS or localhost.");
         }
 
         status.textContent = "Opening microphone...";
 
         stream = await navigator.mediaDevices.getUserMedia({
-
             audio: {
                 autoGainControl: true,
                 noiseSuppression: true,
                 echoCancellation: true
             }
-
         });
 
         if (listening) {
-
             stream.getTracks().forEach(track => track.stop());
             return;
-
         }
 
         listening = true;
@@ -309,6 +292,7 @@ window.startWhisperListening = async function () {
         let recordingTimer = null;
         let restartTimer = null;
 
+
         recognizedText.textContent =
             "Waiting for Allahu Akbar...";
 
@@ -317,7 +301,7 @@ window.startWhisperListening = async function () {
 
 
         // =====================================
-        // STOP FUNCTION
+        // STOP LISTENING
         // =====================================
 
         window.stopWhisperListening = function () {
@@ -349,7 +333,7 @@ window.startWhisperListening = async function () {
 
 
         // =====================================
-        // SELECT AUDIO FORMAT
+        // AUDIO FORMAT
         // =====================================
 
         function getRecorderOptions() {
@@ -357,27 +341,21 @@ window.startWhisperListening = async function () {
             if (MediaRecorder.isTypeSupported(
                 "audio/webm;codecs=opus"
             )) {
-
                 return {
                     mimeType: "audio/webm;codecs=opus"
                 };
-
             }
 
             if (MediaRecorder.isTypeSupported("audio/webm")) {
-
                 return {
                     mimeType: "audio/webm"
                 };
-
             }
 
             if (MediaRecorder.isTypeSupported("audio/mp4")) {
-
                 return {
                     mimeType: "audio/mp4"
                 };
-
             }
 
             return {};
@@ -386,7 +364,7 @@ window.startWhisperListening = async function () {
 
 
         // =====================================
-        // START RECORDING PART
+        // RECORD AND RECOGNIZE AUDIO
         // =====================================
 
         async function listenPart() {
@@ -413,22 +391,13 @@ window.startWhisperListening = async function () {
                 };
 
 
-                // =====================================
-                // RECORDING FINISHED
-                // =====================================
-
                 currentRecorder.onstop = async function () {
 
                     if (stopped) return;
 
                     if (chunks.length === 0) {
-
-                        status.textContent =
-                            "No audio received. Listening again...";
-
                         scheduleNext();
                         return;
-
                     }
 
                     processing = true;
@@ -447,7 +416,7 @@ window.startWhisperListening = async function () {
                     try {
 
                         recognizedText.textContent =
-                            "Audio recorded. AI is processing...";
+                            "Audio recorded. AI processing...";
 
                         status.textContent =
                             "Whisper processing audio...";
@@ -457,21 +426,18 @@ window.startWhisperListening = async function () {
                             audioBlob.size
                         );
 
-                        // IMPORTANT:
-                        // Automatic language detection.
-                        // Do not force Arabic.
-                        // Whisper can attempt to recognize
-                        // Arabic, Urdu, English and Pashto.
+                        // Automatic language detection
+                        // No forced Arabic language setting
 
-                        coconst result =
-    await window.whisperTranscriber(
-        audioUrl,
-        {
-            language: "arabic",
-            task: "transcribe",
-            return_timestamps: false
-        }
-    );
+                        const result =
+                            await window.whisperTranscriber(
+                                audioUrl,
+                                {
+                                    task: "transcribe",
+                                    return_timestamps: false
+                                }
+                            );
+
                         console.log(
                             "COMPLETE WHISPER RESULT:",
                             result
@@ -484,24 +450,19 @@ window.startWhisperListening = async function () {
                                 ? result
                                 : (result?.text || "");
 
-                        // Always show result
-
+                        // Send text to strict detector
                         window.handleTakbeerDetection(
                             spokenText
                         );
 
                     } catch (error) {
 
-                        console.error(
-                            "WHISPER ERROR:",
-                            error
-                        );
+                        console.error("WHISPER ERROR:", error);
 
                         if (!stopped) {
 
                             recognizedText.textContent =
-                                "Recognition failed: " +
-                                error.message;
+                                "Recognition failed: " + error.message;
 
                             status.textContent =
                                 "Recognition error.";
@@ -523,10 +484,7 @@ window.startWhisperListening = async function () {
                 };
 
 
-                // =====================================
-                // START AUDIO RECORDING
-                // =====================================
-
+                // Start recording
                 currentRecorder.start();
 
                 status.textContent =
@@ -535,17 +493,14 @@ window.startWhisperListening = async function () {
                 recognizedText.textContent =
                     "Recording audio...";
 
-                // Longer recording for better speech context
 
+                // Record for 8 seconds
                 recordingTimer = setTimeout(function () {
 
                     if (
                         !stopped &&
                         currentRecorder.state === "recording"
                     ) {
-
-                        status.textContent =
-                            "Recording finished. Processing...";
 
                         currentRecorder.stop();
 
@@ -573,7 +528,7 @@ window.startWhisperListening = async function () {
 
 
         // =====================================
-        // NEXT RECORDING
+        // START NEXT RECORDING
         // =====================================
 
         function scheduleNext() {
@@ -593,8 +548,7 @@ window.startWhisperListening = async function () {
         }
 
 
-        // START FIRST PART
-
+        // Start first recording
         listenPart();
 
     } catch (error) {
@@ -604,9 +558,7 @@ window.startWhisperListening = async function () {
         listening = false;
 
         if (stream) {
-
             stream.getTracks().forEach(track => track.stop());
-
         }
 
         status.textContent =
@@ -620,6 +572,7 @@ window.startWhisperListening = async function () {
 
 </head>
 
+
 <body>
 
 <div class="app-shell">
@@ -631,11 +584,8 @@ window.startWhisperListening = async function () {
         <div class="brand-mark">ع</div>
 
         <div class="brand-text">
-
             <h1>عِش اللحظة</h1>
-
             <p>نماز کے ساتھ جڑے رہیے</p>
-
         </div>
 
     </header>
@@ -665,11 +615,9 @@ window.startWhisperListening = async function () {
     <main class="prayer-card">
 
         <div class="section-heading">
-
             <span class="heading-line"></span>
             <span>نماز کی رہنمائی</span>
             <span class="heading-line"></span>
-
         </div>
 
         <h2>عشاء کی نماز</h2>
@@ -692,13 +640,9 @@ window.startWhisperListening = async function () {
         <div class="buttons">
 
             <button onclick="testRakat(1)">پہلی رکعت</button>
-
             <button onclick="testRakat(2)">دوسری رکعت</button>
-
             <button onclick="testRakat(3)">تیسری رکعت</button>
-
             <button onclick="testRakat(4)">چوتھی رکعت</button>
-
             <button class="salam" onclick="testSalam()">سلام</button>
 
         </div>
@@ -762,11 +706,9 @@ window.startWhisperListening = async function () {
     <section class="mic-card">
 
         <div class="section-heading">
-
             <span class="heading-line"></span>
             <span>AI Voice Assistant</span>
             <span class="heading-line"></span>
-
         </div>
 
 
@@ -832,7 +774,7 @@ window.startWhisperListening = async function () {
         </div>
 
 
-        <!-- RECOGNIZED VOICE TEXT -->
+        <!-- RECOGNIZED TEXT -->
 
         <div class="mic-status-box">
 
@@ -871,25 +813,19 @@ function updateDigitalClock() {
     const now = new Date();
 
     document.getElementById("digitalClock").textContent =
-
         now.toLocaleTimeString("en-GB", {
-
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",
             hour12: false
-
         });
 
     document.getElementById("clockDate").textContent =
-
         now.toLocaleDateString("en-GB", {
-
             weekday: "long",
             day: "numeric",
             month: "long",
             year: "numeric"
-
         });
 
 }
