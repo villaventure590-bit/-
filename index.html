@@ -281,14 +281,14 @@
 
                             try {
 
-                                const result =
-                                    await window.whisperTranscriber(
-                                        audioUrl,
-                                        {
-                                         
-                                            task: "transcribe"
-                                        }
-                                    );
+                               const result =
+    await window.whisperTranscriber(
+        audioUrl,
+        {
+            language: "arabic",
+            task: "transcribe"
+        }
+    );
 
                                 if (stopped) return;
 
