@@ -127,6 +127,9 @@ window.testDeviceVibration = function () {
 };
 
 
+
+
+
 // =====================================
 // 4. NORMALIZE RECOGNIZED TEXT
 // =====================================
@@ -135,19 +138,12 @@ function normalizeTakbeerText(text) {
 
     return (text || "")
         .normalize("NFKC")
-
-        // Remove Arabic vowel marks and tatweel
         .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
-
-        // Normalize Arabic and Urdu letters
         .replace(/[أإآٱ]/g, "ا")
         .replace(/ى/g, "ي")
         .replace(/[کك]/g, "ك")
-        .replace(/[ہۀة]/g, "ه")
-
-        // Normalize English separators and punctuation
-        .replace(/[-_.,!?،؛؟'"()[\]]/g, " ")
-
+        .replace(/[.,!?،؛؟'"()[\]؛]/g, " ")
+        .replace(/[-_]/g, " ")
         .replace(/\s+/g, " ")
         .trim()
         .toLowerCase();
@@ -155,31 +151,26 @@ function normalizeTakbeerText(text) {
 
 
 // =====================================
-// 5. STRICT TAKBEER DETECTION
+// 5. TAKBEER DETECTION
 // =====================================
 
 function isTakbeer(text) {
 
-    if (!text) return false;
-
     const clean = normalizeTakbeerText(text);
 
-    // Only exact Arabic / Urdu Takbeer
-    const arabicTakbeer = [
-        "الله اكبر",
-        "الله اكبر"
-    ];
+    if (!clean) return false;
 
-    // Only exact English pronunciation
-    const englishTakbeer = [
-        "allah akbar",
-        "allahu akbar",
-        "allaho akbar"
-    ];
+    // Arabic / Urdu / Pashto script
+    const arabicPattern =
+        /(?:^|\s)الله\s+اكبر(?:$|\s)/;
+
+    // English pronunciation
+    const englishPattern =
+        /\ballah(?:u|o)?\s+akbar\b/i;
 
     return (
-        arabicTakbeer.includes(clean) ||
-        englishTakbeer.includes(clean)
+        arabicPattern.test(clean) ||
+        englishPattern.test(clean)
     );
 }
 
@@ -200,12 +191,37 @@ window.handleTakbeerDetection = function (text) {
 
     const rawText = (text || "").trim();
 
-    console.log("RAW WHISPER RESULT:", rawText);
+    console.log("WHISPER RAW TEXT:", rawText);
 
-    // Show every recognized result for debugging
     recognizedText.textContent = rawText
         ? "Whisper heard: " + rawText
         : "No speech recognized.";
+
+    if (isTakbeer(rawText)) {
+
+        status.textContent = "ALLAHU AKBAR DETECTED! ✓";
+
+        const now = Date.now();
+
+        if (now - lastTakbeerVibration >= 2000) {
+
+            if (typeof navigator.vibrate === "function") {
+                navigator.vibrate(150);
+            }
+
+            lastTakbeerVibration = now;
+        }
+
+        console.log("TAKBEER DETECTED");
+
+    } else {
+
+        status.textContent = "Listening for Allahu Akbar...";
+
+        console.log("OTHER TEXT — NO VIBRATION");
+    }
+};
+
 
     // IMPORTANT:
     // Vibration is allowed only for exact Takbeer.
