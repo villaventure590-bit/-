@@ -223,39 +223,6 @@ window.handleTakbeerDetection = function (text) {
 };
 
 
-    // IMPORTANT:
-    // Vibration is allowed only for exact Takbeer.
-    if (isTakbeer(rawText)) {
-
-        status.textContent = "ALLAHU AKBAR DETECTED! ✓";
-
-        const now = Date.now();
-
-        // Prevent repeated vibration
-        if (now - lastTakbeerVibration >= 2000) {
-
-            if (typeof navigator.vibrate === "function") {
-                navigator.vibrate(150);
-            }
-
-            lastTakbeerVibration = now;
-
-        }
-
-        console.log("EXACT TAKBEER DETECTED!");
-
-    } else {
-
-        // No vibration for other words
-        status.textContent = "Listening for Allahu Akbar...";
-
-        console.log("NOT TAKBEER — NO VIBRATION");
-
-    }
-
-};
-
-
 // =====================================
 // 7. START LISTENING
 // =====================================
